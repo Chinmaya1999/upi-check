@@ -87,8 +87,6 @@ jobs:
     if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    outputs:
-      tag: ${{ steps.meta.outputs.tag }}
     steps:
       - name: Check required secrets
         env:
@@ -105,8 +103,6 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@v4
-      - id: meta
-        run: echo "tag=${IMAGE}:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -118,7 +114,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -154,11 +150,11 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy.pem infra/deploy.sh infra/backup-db.sh infra/docker-compose.yml \
             "$SERVER_USER@$SERVER_HOST:~/paisa/"
-      - name: Deploy ${{ needs.image.outputs.tag }}
+      - name: Deploy ${{ github.sha }}
         env:
           DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
           DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-          TAG: ${{ needs.image.outputs.tag }}
+          TAG: ${{ env.IMAGE }}:${{ github.sha }}   # not a job output: the image name contains a secret value, which GitHub redacts from outputs
         run: |
           # Registry login happens on the server for the pull only; the credential is removed afterwards.
           printf '%s' "$DH_TOKEN" | ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" \
