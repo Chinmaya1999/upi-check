@@ -57,6 +57,20 @@ jobs:
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
     steps:
+      - name: Check required secrets
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          missing=""
+          [ -z "$DH_USER" ] && missing="$missing DOCKERHUB_USERNAME"
+          [ -z "$DH_TOKEN" ] && missing="$missing DOCKERHUB_TOKEN"
+          [ -z "$SSH_KEY" ] && missing="$missing EC2_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing repository secrets::Add these under Settings > Secrets and variables > Actions:$missing"
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - id: meta
         run: echo "tag=${IMAGE}:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
@@ -82,7 +96,6 @@ jobs:
     needs: image
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    environment: production
     steps:
       - uses: actions/checkout@v4
       - name: Configure SSH
