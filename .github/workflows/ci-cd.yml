@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      abis:
+        description: "Android ABIs to build (more = slower). Default covers all modern phones and Apple-silicon emulators."
+        default: arm64-v8a
+        type: choice
+        options: [arm64-v8a, "arm64-v8a,armeabi-v7a", "arm64-v8a,armeabi-v7a,x86_64"]
 
 concurrency:
   group: ci-cd-${{ github.ref }}
@@ -17,6 +23,33 @@ env:
   IMAGE: awsmallick1999/paisa-api
 
 jobs:
+  # ── 0. What changed? Backend-only pushes skip the 10-minute APK build, app-only pushes skip the deploy ──
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      api: ${{ steps.f.outputs.api }}
+      app: ${{ steps.f.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: f
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - 'backend/**'
+              - 'packages/core/**'
+              - 'Dockerfile'
+              - 'infra/**'
+              - 'scripts/**'
+              - 'package*.json'
+              - '.github/workflows/**'
+            app:
+              - 'mobile/**'
+              - 'packages/core/**'
+              - '.github/workflows/**'
+
   # ── 1. Quality gate: engine tests + typecheck for core, backend and the app ─────────────────────
   test:
     name: Test & typecheck
@@ -50,8 +83,8 @@ jobs:
   # ── 2. Build + push the API image (main only) ───────────────────────────────────────────────────
   image:
     name: Build & push API image
-    needs: test
-    if: github.event_name != 'pull_request'
+    needs: [test, changes]
+    if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.api == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -132,8 +165,8 @@ jobs:
   # ── 4. Build the Android APK against the live API (parallel to image/deploy) ────────────────────
   apk:
     name: Build Android APK
-    needs: test
-    if: github.event_name != 'pull_request'
+    needs: [test, changes]
+    if: github.event_name != 'pull_request' && (github.event_name == 'workflow_dispatch' || needs.changes.outputs.app == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -148,6 +181,8 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}   # main writes the cache, branches only read it
       - name: Install app dependencies
         working-directory: mobile
         run: npm ci
@@ -159,7 +194,8 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --console=plain \
             -PversionCode=${{ github.run_number }} -PversionName=0.1.${{ github.run_number }} \
-            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+            -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a' }} \
+            --build-cache --parallel
       - name: Name the artifact
         run: cp mobile/android/app/build/outputs/apk/release/app-release.apk Paisa-build-${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
