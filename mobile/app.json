@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Paisa",
+    "slug": "paisa-upi-tracker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#101827",
+    "android": {
+      "package": "in.paisa.tracker",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "USE_BIOMETRIC",
+        "READ_SMS"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-local-authentication"
+    ],
+    "icon": "./assets/icon.png"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "upi-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["packages/*", "backend"],
+  "scripts": {
+    "test": "npm test -w @upi/core",
+    "db:migrate": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f db/migrations/001_init.sql"
+  }
+}
