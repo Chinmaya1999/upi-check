@@ -136,8 +136,19 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy.pem
+          # Secrets pasted into the web form often lose their line breaks (or gain CRs). Rebuild a clean PEM from the body.
+          python3 - <<'PY'
+          import os, re, sys, textwrap
+          k = os.environ["EC2_SSH_KEY"].replace("\r", "")
+          m = re.search(r"-----BEGIN ([A-Z ]+)-----(.*?)-----END \1-----", k, re.S)
+          if not m:
+              sys.exit("::error title=EC2_SSH_KEY is not a PEM private key::Re-set it with: gh secret set EC2_SSH_KEY < adihuman.pem")
+          body = re.sub(r"\s+", "", m.group(2))
+          pem = f"-----BEGIN {m.group(1)}-----\n" + "\n".join(textwrap.wrap(body, 64)) + f"\n-----END {m.group(1)}-----\n"
+          open(os.path.expanduser("~/.ssh/deploy.pem"), "w").write(pem)
+          PY
           chmod 600 ~/.ssh/deploy.pem
+          ssh-keygen -y -f ~/.ssh/deploy.pem > /dev/null || { echo "::error title=EC2_SSH_KEY is corrupt::Re-set it with: gh secret set EC2_SSH_KEY < adihuman.pem"; exit 1; }
           ssh-keyscan -T 10 -H "$SERVER_HOST" >> ~/.ssh/known_hosts
       - name: Upload deploy files
         run: |
