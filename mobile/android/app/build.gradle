@@ -92,8 +92,9 @@ android {
         applicationId 'in.paisa.tracker'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        // CI passes -PversionCode=<run number> so every build installs over the previous one.
+        versionCode (findProperty('versionCode') ?: 1).toInteger()
+        versionName (findProperty('versionName') ?: "0.1.0")
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

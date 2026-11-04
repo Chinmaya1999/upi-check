@@ -1,0 +1,10 @@
+services:
+  api:
+    image: ${IMAGE:?set IMAGE}
+    container_name: paisa-api
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+    volumes:
+      - /home/ec2-user/paisa/data:/data          # SQLite database lives on the host, survives redeploys
+      - /home/ec2-user/paisa/backups:/backups
