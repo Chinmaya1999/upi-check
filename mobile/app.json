@@ -5,7 +5,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#101827",
+    "backgroundColor": "#070B16",
     "android": {
       "package": "in.paisa.tracker",
       "adaptiveIcon": {

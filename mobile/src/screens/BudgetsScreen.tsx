@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,10 +12,10 @@ import { Button, Card, Eyebrow, Tap } from '../components/ui';
 import { BudgetRing } from '../components/Charts';
 import { AnimatedAmount } from '../components/AnimatedAmount';
 
-const META: Record<Period, { icon: string; sub: string; tint: [string, string]; hint: string }> = {
-  day: { icon: 'sunny', sub: 'Resets every midnight', tint: ['#F59F00', '#FF6B6B'], hint: '500' },
-  week: { icon: 'calendar', sub: 'Monday to Sunday', tint: ['#339AF0', '#845EF7'], hint: '3000' },
-  month: { icon: 'moon', sub: 'Resets on the 1st', tint: ['#12B886', '#15AABF'], hint: '10000' },
+const META: Record<Period, { icon: string; sub: string; tint: [string, string]; hint: string; presets: number[] }> = {
+  day: { icon: 'sunny', sub: 'Resets every midnight', tint: ['#F59F00', '#FF6B6B'], hint: '500', presets: [200, 500, 1000, 2000] },
+  week: { icon: 'calendar', sub: 'Monday to Sunday', tint: ['#339AF0', '#845EF7'], hint: '3000', presets: [1500, 3000, 5000, 10000] },
+  month: { icon: 'moon', sub: 'Resets on the 1st', tint: ['#12B886', '#15AABF'], hint: '10000', presets: [5000, 10000, 20000, 50000] },
 };
 
 function LimitCard({ s, index }: { s: BudgetStatus; index: number }) {
@@ -29,6 +29,7 @@ function LimitCard({ s, index }: { s: BudgetStatus; index: number }) {
   const save = async () => {
     const n = Math.round(Number(text.replace(/[^0-9.]/g, '')) * 100);
     if (!n || n < 100) { Alert.alert('Enter an amount', 'Type the limit in rupees, e.g. ' + m.hint); return; }
+    Keyboard.dismiss();
     await setLimit(s.period, n);
     setEditing(false); setText('');
   };
@@ -65,6 +66,14 @@ function LimitCard({ s, index }: { s: BudgetStatus; index: number }) {
               <Text style={{ color: colors.textMuted, fontSize: 20, fontWeight: '700' }}>₹</Text>
               <TextInput value={text} onChangeText={setText} keyboardType="numeric" placeholder={`e.g. ${m.hint}`} placeholderTextColor={colors.textMuted}
                 accessibilityLabel={`${PERIOD_LABEL[s.period]} budget in rupees`} style={{ flex: 1, color: colors.text, fontSize: 20, fontWeight: '700', paddingVertical: 14, paddingHorizontal: 8 }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {m.presets.map((v) => (
+                <Tap key={v} onPress={() => setText(String(v))} label={`Use ${v} rupees`}
+                  style={{ paddingHorizontal: 14, height: 34, borderRadius: 17, justifyContent: 'center', backgroundColor: Number(text) === v ? colors.brand : colors.cardAlt }}>
+                  <Text style={{ color: Number(text) === v ? colors.onBrand : colors.text, fontWeight: '700', fontSize: 13 }}>₹{v.toLocaleString('en-IN')}</Text>
+                </Tap>
+              ))}
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}><Button title={s.limit ? 'Save' : 'Set budget'} onPress={save} /></View>
@@ -103,7 +112,7 @@ export function BudgetsScreen() {
   );
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: 130, paddingHorizontal: space.lg, gap: space.lg }}>
+    <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: 130, paddingHorizontal: space.lg, gap: space.lg }}>
       <View>
         <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.8 }}>Budgets</Text>
         <Text style={{ color: colors.textMuted, marginTop: 2 }}>Set limits. We’ll buzz you the moment you cross one.</Text>

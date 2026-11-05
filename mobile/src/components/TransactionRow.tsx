@@ -4,7 +4,9 @@ import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, formatINR, type Transaction } from '@upi/core';
 import { useTheme } from '../theme';
-import { Pill } from './ui';
+import { Pill, Tap } from './ui';
+import { bankOf } from '../data/banks';
+import { BankBadge } from './BankBadge';
 
 const APP_LABEL = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', bank_app: 'Bank app', unknown: 'Unknown app' } as const;
 
@@ -21,7 +23,7 @@ export function timeLabel(iso: string) {
   return `${h % 12 || 12}:${m} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
-export function TransactionRow({ t, index = 0, showDate }: { t: Transaction; index?: number; showDate?: boolean }) {
+export function TransactionRow({ t, index = 0, showDate, onPress }: { t: Transaction; index?: number; showDate?: boolean; onPress?: (t: Transaction) => void }) {
   const { colors } = useTheme();
   const reduce = useReducedMotion();
   const cat = CATEGORIES.find((c) => c.id === t.categoryId) ?? CATEGORIES[CATEGORIES.length - 1]!;
@@ -29,21 +31,25 @@ export function TransactionRow({ t, index = 0, showDate }: { t: Transaction; ind
   const credit = t.direction === 'credit';
   const amountColor = excluded || t.status === 'pending' ? colors.textMuted : credit ? colors.income : colors.text;
   const special = describeTxn(t);
+  const bank = bankOf(t);
 
-  return (
+  const row = (
     <Animated.View
       entering={reduce ? undefined : FadeInDown.delay(Math.min(index, 10) * 45).duration(350)}
       accessible accessibilityLabel={`${t.merchant}, ${credit ? 'credit' : 'debit'} ${formatINR(t.amountPaise)}, ${t.status}${special ? ', ' + special : ''}`}
       style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 12, opacity: t.status === 'failed' ? 0.6 : 1 }}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: cat.color + '22', alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={cat.icon as never} size={21} color={cat.color} />
+      <View>
+        <BankBadge bank={bank} />
+        <View style={{ position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: cat.color, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={cat.icon as never} size={10} color="#fff" /></View>
+        </View>
       </View>
       <View style={{ flex: 1, gap: 3 }}>
         <Text numberOfLines={1} style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{t.merchant}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <Text style={{ color: colors.textMuted, fontSize: 12 }}>
-            {showDate ? `${t.dayKey.slice(8)}/${t.dayKey.slice(5, 7)} · ` : ''}{timeLabel(t.occurredAt)} · {t.paymentApp === 'unknown' && t.channel === 'upi' ? 'UPI' : APP_LABEL[t.paymentApp]}
+            {showDate ? `${t.dayKey.slice(8)}/${t.dayKey.slice(5, 7)} · ` : ''}{timeLabel(t.occurredAt)} · {bank.name.replace(/ (Payments )?Bank$/, '')}{bank.last4 ? ` ••${bank.last4}` : ''}{t.paymentApp !== 'unknown' && t.paymentApp !== 'bank_app' ? ` · ${APP_LABEL[t.paymentApp]}` : ''}
           </Text>
           {t.status === 'pending' && <Pill label="Pending" color={colors.warning} bg={colors.warning + '22'} />}
           {t.status === 'failed' && <Pill label="Failed" color={colors.expense} bg={colors.expense + '22'} />}
@@ -56,4 +62,5 @@ export function TransactionRow({ t, index = 0, showDate }: { t: Transaction; ind
       </Text>
     </Animated.View>
   );
+  return onPress ? <Tap onPress={() => onPress(t)} label={`Open ${t.merchant}`}>{row}</Tap> : row;
 }
