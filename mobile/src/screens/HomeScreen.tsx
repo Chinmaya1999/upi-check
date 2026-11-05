@@ -24,7 +24,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
-  const { ready, txns, dashboard: d, isDemo, loadDemo, refresh, error } = useStore();
+  const { ready, txns, dashboard: d, refresh, error } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
 

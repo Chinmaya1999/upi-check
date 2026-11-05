@@ -12,7 +12,7 @@ import * as api from '../data/api';
 export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Profile; onProfile: (p: Profile) => void; onSignOut: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
-  const { isDemo, loadDemo, reset, txns, server, pushToServer } = useStore();
+  const { reset, txns, server, pushToServer } = useStore();
 
   const row = (icon: string, title: string, sub: string, right?: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>

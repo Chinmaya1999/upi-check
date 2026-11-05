@@ -12,7 +12,7 @@ const APP = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHI
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
 /** Bottom sheet with everything we know about one transaction, including the original bank SMS. */
-export function TxnDetail({ t, onClose }: { t: Transaction | null; onClose: () => void }) {
+export function TxnDetail({ t, onClose, onDelete }: { t: Transaction | null; onClose: () => void; onDelete?: () => void }) {
   const { colors } = useTheme();
   if (!t) return null;
   const bank = bankOf(t);
@@ -59,7 +59,10 @@ export function TxnDetail({ t, onClose }: { t: Transaction | null; onClose: () =
                   <Text selectable style={{ color: colors.text, fontSize: 13.5, lineHeight: 20 }}>{sms.body}</Text>
                 </View>
               ) : null}
-              <View style={{ marginTop: space.xl }}><Button title="Done" onPress={onClose} /></View>
+              <View style={{ marginTop: space.xl, gap: 10 }}>
+                <Button title="Done" onPress={onClose} />
+                {onDelete ? <Button title="Delete this entry" variant="ghost" onPress={onDelete} /> : null}
+              </View>
             </ScrollView>
           </Pressable>
         </Animated.View>

@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { attributeApps, buildDashboard, generateDemoRaw, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
+import { attributeApps, buildDashboard, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
 import { ensureNotifyPermission, hasSmsPermission, postNotification, pushWidget, readInbox } from './inbox';
+import { dedupeNear } from './dedupe';
 import { DEFAULT_PREFS, PERIOD_LABEL, dueAlerts, spentIn, statuses, tightest, type Limits, type Notif, type Period, type Prefs } from './budgets';
 import * as api from './api';
 
@@ -23,9 +24,9 @@ interface StoreCtx {
   error: string | null;
   now: Date;
   refresh: () => Promise<void>;
-  loadDemo: () => Promise<void>;
   addManual: (raw: Omit<RawTransaction, 'source'>) => Promise<{ ok: boolean; message: string }>;
   setBudget: (paise: number) => Promise<void>;
+  removeTxn: (id: string) => Promise<void>;
   reset: () => Promise<void>;
   /** Pull new bank SMS + payment-app notifications from this device. */
   syncDevice: () => Promise<SyncResult>;
@@ -73,15 +74,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const loadDemo = useCallback(async () => {
-    const at = new Date();
-    const { store } = ingestBatch(generateDemoRaw(at), { existing: await db.loadAll(), consents: [], now: at });
-    await db.upsertMany(store);
-    await db.setMeta('demo', '1');
-    if (!(await db.getMeta('budget'))) await db.setMeta('budget', String(4000000));
-    await refresh();
-  }, [refresh]);
-
   const addManual = useCallback<StoreCtx['addManual']>(async (raw) => {
     const at = new Date();
     const existing = await db.loadAll();
@@ -94,6 +86,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return { ok: true, message: r.outcome === 'merged' ? 'Matched an existing transaction — not counted twice.' : 'Transaction saved.' };
   }, [refresh]);
 
+  const removeTxn = useCallback(async (id: string) => { await db.deleteMany([id]); await refresh(); pushToServer([id]); }, [refresh]);
   const setBudget = useCallback(async (paise: number) => { await db.setMeta('budget', String(paise)); await refresh(); }, [refresh]);
   const setLimit = useCallback(async (p: Period, paise: number | null) => {
     if (p === 'month') { if (paise) await db.setMeta('budget', String(paise)); else await db.setMeta('budget', '0'); }
@@ -139,9 +132,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   /** Restore/merge the account's transactions from the server (used after sign-in). */
   const pullFromServer = useCallback(async () => {
     const r = await api.pullTransactions();
-    if (r.transactions.length) await db.upsertMany(r.transactions);
+    const real = r.transactions.filter((t) => !t.accountId.startsWith('demo-'));
+    if (real.length) await db.upsertMany(real);
     await refresh();
-    return r.transactions.length;
+    return real.length;
   }, [refresh]);
 
   const syncing = useRef(false);
@@ -164,6 +158,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { update, remove } = attributeApps(all);
       await db.upsertMany([...first.store.filter((t) => !update.some((u) => u.id === t.id)), ...update]);
       await db.deleteMany(remove);
+      // Collapse double bank SMS for one payment (also cleans up duplicates stored by earlier versions).
+      const dd = dedupeNear(await db.loadAll());
+      if (dd.update.length) await db.upsertMany(dd.update);
+      if (dd.remove.length) await db.deleteMany(dd.remove);
+      remove.push(...dd.remove);
       await db.setMeta('smsCursor', String(batch.newestSmsAt));
       await db.setMeta('lastSync', String(Date.now()));
       await refresh();
@@ -186,6 +185,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         if ((await db.getMeta('demo')) === '1') { await db.clearTxns(); await db.setMeta('demo', '0'); await refresh(); }
+        // Sample records from old builds (possibly restored from the server) never belong in real data.
+        const sample = (await db.loadAll()).filter((t) => t.accountId.startsWith('demo-')).map((t) => t.id);
+        if (sample.length) { await db.deleteMany(sample); await refresh(); pushToServer(sample); }
         if (await hasSmsPermission()) await syncDevice();
       } catch { /* the Sync card shows errors on manual sync */ }
     })();
@@ -222,8 +224,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [ready, dashboard, txns, limits, now]);
 
   const value = useMemo(
-    () => ({ ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer }),
-    [ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer],
+    () => ({ ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, addManual, setBudget, removeTxn, reset, syncDevice, lastSync, server, pushToServer, pullFromServer }),
+    [ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, addManual, setBudget, removeTxn, reset, syncDevice, lastSync, server, pushToServer, pullFromServer],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

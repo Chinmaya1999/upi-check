@@ -3,7 +3,8 @@ import { FlatList, SectionList, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { formatINR, type Transaction } from '@upi/core';
+import { addDays, dayKeyOf, formatINR, type Transaction } from '@upi/core';
+import { weekStart } from '../data/budgets';
 import { useTheme, space, radius } from '../theme';
 import { useStore } from '../data/store';
 import { Card, Tap } from '../components/ui';
@@ -25,13 +26,34 @@ const dayTitle = (k: string) => {
 };
 const sum = (list: Transaction[]) => list.filter(counted).reduce((a, t) => (t.direction === 'debit' ? { ...a, d: a.d + t.amountPaise } : { ...a, c: a.c + t.amountPaise }), { d: 0, c: 0 });
 
+type Range = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'lastmonth' | 'pick';
+const RANGES: { id: Range; label: string }[] = [
+  { id: 'all', label: 'All time' }, { id: 'today', label: 'Today' }, { id: 'yesterday', label: 'Yesterday' },
+  { id: 'week', label: 'This week' }, { id: 'month', label: 'This month' }, { id: 'lastmonth', label: 'Last month' }, { id: 'pick', label: 'Pick a day' },
+];
+function rangeBounds(r: Range, now: Date, day: string | null): { from: string; to: string } | null {
+  const today = dayKeyOf(now);
+  if (r === 'today') return { from: today, to: today };
+  if (r === 'yesterday') { const y = addDays(today, -1); return { from: y, to: y }; }
+  if (r === 'week') return { from: weekStart(today), to: today };
+  if (r === 'month') return { from: `${today.slice(0, 7)}-01`, to: today };
+  if (r === 'lastmonth') { const first = `${today.slice(0, 7)}-01`; const to = addDays(first, -1); return { from: `${to.slice(0, 7)}-01`, to }; }
+  if (r === 'pick' && day) return { from: day, to: day };
+  return null;
+}
+
 interface BankCard { bank: Bank; list: Transaction[]; d: number; c: number; last: string }
 
 export function TransactionsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
-  const { txns, ready } = useStore();
+  const { txns: allTxns, ready, now, removeTxn } = useStore();
+  const [range, setRange] = useState<Range>('all');
+  const [day, setDay] = useState<string | null>(null);
+  const bounds = rangeBounds(range, now, day);
+  const txns = useMemo(() => (bounds ? allTxns.filter((t) => t.dayKey >= bounds.from && t.dayKey <= bounds.to) : allTxns), [allTxns, bounds?.from, bounds?.to]); // eslint-disable-line react-hooks/exhaustive-deps
+  const days = useMemo(() => { const have = new Set(allTxns.map((t) => t.dayKey)); const today = dayKeyOf(now); return Array.from({ length: 45 }, (_, i) => { const k = addDays(today, -i); return { k, has: have.has(k) }; }); }, [allTxns, now]);
   const [filter, setFilter] = useState<Filter>('all');
   const [bankId, setBankId] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -107,6 +129,34 @@ export function TransactionsScreen() {
     <View style={{ gap: space.md, paddingTop: insets.top + space.md, paddingBottom: space.sm, backgroundColor: colors.bg }}>
       <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.8 }}>Transactions</Text>
       {banks.length > 0 && bankStrip}
+      <View style={{ marginHorizontal: -space.lg }}>
+        <FlatList horizontal showsHorizontalScrollIndicator={false} data={RANGES} keyExtractor={(x) => x.id} contentContainerStyle={{ paddingHorizontal: space.lg, gap: 8 }}
+          renderItem={({ item }) => {
+            const on = range === item.id;
+            return (
+              <Tap onPress={() => { setRange(item.id); if (item.id !== 'pick') setDay(null); }} label={`Date: ${item.label}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 36, borderRadius: 18, backgroundColor: on ? colors.brand : colors.card, borderWidth: on ? 0 : 1, borderColor: colors.border }}>
+                {item.id === 'pick' && <Ionicons name="calendar" size={14} color={on ? colors.onBrand : colors.textMuted} />}
+                <Text style={{ color: on ? colors.onBrand : colors.textMuted, fontWeight: '700', fontSize: 13 }}>{item.id === 'pick' && day ? dayTitle(day) : item.label}</Text>
+              </Tap>
+            );
+          }} />
+        {range === 'pick' && (
+          <FlatList horizontal showsHorizontalScrollIndicator={false} inverted={false} data={days} keyExtractor={(d) => d.k} style={{ marginTop: 10 }} contentContainerStyle={{ paddingHorizontal: space.lg, gap: 8 }}
+            renderItem={({ item }) => {
+              const on = day === item.k;
+              const d = new Date(`${item.k}T12:00:00Z`);
+              return (
+                <Tap onPress={() => setDay(item.k)} label={`Show ${item.k}`}
+                  style={{ width: 54, paddingVertical: 10, borderRadius: 16, alignItems: 'center', gap: 2, backgroundColor: on ? colors.chipOn : colors.card, opacity: item.has || on ? 1 : 0.45 }}>
+                  <Text style={{ color: on ? colors.onChip : colors.textMuted, fontSize: 11, fontWeight: '600' }}>{d.toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'UTC' })}</Text>
+                  <Text style={{ color: on ? colors.onChip : colors.text, fontSize: 18, fontWeight: '800' }}>{d.getUTCDate()}</Text>
+                  <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: item.has ? (on ? colors.onChip : colors.brand) : 'transparent' }} />
+                </Tap>
+              );
+            }} />
+        )}
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: 14, height: 48 }}>
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Search merchant, bank or reference" placeholderTextColor={colors.textMuted}
@@ -145,8 +195,8 @@ export function TransactionsScreen() {
         ListHeaderComponent={header}
         ListEmptyComponent={ready ? (
           <Card style={{ alignItems: 'center', marginTop: space.lg }}>
-            <Text style={{ color: colors.text, fontWeight: '700' }}>{txns.length ? 'Nothing matches' : 'No transactions yet'}</Text>
-            <Text style={{ color: colors.textMuted, marginTop: 4 }}>{txns.length ? 'Try a different bank, filter or search.' : 'Allow SMS access from the Home tab to load your bank alerts.'}</Text>
+            <Text style={{ color: colors.text, fontWeight: '700' }}>{allTxns.length ? 'Nothing matches' : 'No transactions yet'}</Text>
+            <Text style={{ color: colors.textMuted, marginTop: 4 }}>{allTxns.length ? 'Try a different date, bank, filter or search.' : 'Allow SMS access from the Home tab to load your bank alerts.'}</Text>
           </Card>
         ) : undefined}
         renderSectionHeader={({ section: s }) => (
@@ -164,7 +214,7 @@ export function TransactionsScreen() {
           </View>
         )}
       />
-      <TxnDetail t={open} onClose={() => setOpen(null)} />
+      <TxnDetail t={open} onClose={() => setOpen(null)} onDelete={open?.sources.length === 1 && open.sources[0] === 'manual' ? async () => { await removeTxn(open.id); setOpen(null); } : undefined} />
     </View>
   );
 }
