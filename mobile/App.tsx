@@ -17,7 +17,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { DailyScreen } from './src/screens/DailyScreen';
-import { PhaseScreen } from './src/screens/PhaseScreen';
+import { BudgetsScreen } from './src/screens/BudgetsScreen';
 import { AddTransactionModal } from './src/screens/AddTransactionModal';
 import { Button } from './src/components/ui';
 import { useStore } from './src/data/store';
@@ -49,7 +49,7 @@ function Main({ profile, setProfile, signOut }: { profile: Profile; setProfile: 
           <Tab.Screen name="Home">{({ navigation }) => <HomeScreen profile={profile} onAdd={() => setAdding(true)} onSeeAll={() => navigation.navigate('Transactions')} />}</Tab.Screen>
           <Tab.Screen name="Transactions" component={TransactionsScreen} />
           <Tab.Screen name="Analytics" component={DailyScreen} />
-          <Tab.Screen name="Budgets">{() => <PhaseScreen title="Budgets" phase={5} icon="wallet" needs="Monthly, daily and category budgets, savings goals and alerts. Your monthly budget already drives the Home ring." />}</Tab.Screen>
+          <Tab.Screen name="Budgets" component={BudgetsScreen} />
           <Tab.Screen name="Profile">{() => <ProfileScreen profile={profile} onProfile={setProfile} onSignOut={signOut} />}</Tab.Screen>
         </Tab.Navigator>
       </NavigationContainer>

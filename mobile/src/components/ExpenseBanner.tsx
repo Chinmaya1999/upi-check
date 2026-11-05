@@ -1,11 +1,20 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { formatINR, type Dashboard } from '@upi/core';
 import { AnimatedAmount } from './AnimatedAmount';
 import { radius } from '../theme';
+
+/** A soft glowing orb that drifts slowly — gives the hero a living, aurora feel. */
+function Orb({ size, color, style, dx, dy, ms }: { size: number; color: string; style: object; dx: number; dy: number; ms: number }) {
+  const reduce = useReducedMotion();
+  const t = useSharedValue(0);
+  React.useEffect(() => { if (!reduce) t.value = withRepeat(withSequence(withTiming(1, { duration: ms, easing: Easing.inOut(Easing.sin) }), withTiming(0, { duration: ms, easing: Easing.inOut(Easing.sin) })), -1); }, [reduce, ms, t]);
+  const a = useAnimatedStyle(() => ({ transform: [{ translateX: dx * t.value }, { translateY: dy * t.value }, { scale: 1 + 0.15 * t.value }] }));
+  return <Animated.View pointerEvents="none" style={[{ position: 'absolute', width: size, height: size, borderRadius: size / 2, backgroundColor: color }, style, a]} />;
+}
 
 /** The hero banner: "You spent ₹X today." Every number is derived from stored transactions. */
 export function ExpenseBanner({ d }: { d: Dashboard }) {
@@ -22,9 +31,11 @@ export function ExpenseBanner({ d }: { d: Dashboard }) {
 
   return (
     <Animated.View entering={reduce ? undefined : FadeInDown.duration(600).springify().damping(16)}>
-      <LinearGradient colors={['#101827', '#16324A', '#0E6B55']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      <LinearGradient colors={['#0B1224', '#1B2F6B', '#0E7C66']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={{ borderRadius: radius.lg + 4, padding: 22, overflow: 'hidden' }}>
-        <View style={{ position: 'absolute', right: -40, top: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(18,184,134,0.18)' }} />
+        <Orb size={190} color="rgba(61,219,169,0.22)" style={{ right: -60, top: -60 }} dx={-26} dy={22} ms={4200} />
+        <Orb size={140} color="rgba(132,94,247,0.28)" style={{ left: -40, bottom: -50 }} dx={30} dy={-18} ms={5200} />
+        <Orb size={70} color="rgba(116,192,252,0.22)" style={{ right: 60, bottom: 20 }} dx={-14} dy={-20} ms={3600} />
         <Text style={{ color: 'rgba(255,255,255,0.72)', fontSize: 14, fontWeight: '600' }}>
           {spent === 0 ? 'No spending today' : 'You spent'}
         </Text>

@@ -6,7 +6,9 @@ interface Native {
   isNotificationAccessEnabled(): Promise<boolean>;
   openNotificationAccessSettings(): void;
   drainNotifications(): Promise<AppNotification[]>;
-  updateWidget(todayDebit: number, todayCredit: number, monthDebit: number, budgetPct: number, dayKey: string): void;
+  updateWidget(todayDebit: number, todayCredit: number, monthDebit: number, weekDebit: number, budgetPct: number, budgetLabel: string, dayKey: string): void;
+  notify(title: string, body: string, id: number, sound: boolean): void;
+  saveReport(name: string, content: string, mime: string): Promise<string>;
 }
 const native: Native | undefined = Platform.OS === 'android' ? NativeModules.PaisaInbox : undefined;
 
@@ -43,6 +45,21 @@ export async function readInbox(sinceMs: number): Promise<InboxBatch> {
 }
 
 /** Pushes the headline numbers to the Android home-screen widget (no-op elsewhere). */
-export function pushWidget(todayDebitPaise: number, todayCreditPaise: number, monthDebitPaise: number, budgetPct: number | null, dayKey: string) {
-  native?.updateWidget(todayDebitPaise, todayCreditPaise, monthDebitPaise, budgetPct ?? -1, dayKey);
+export function pushWidget(todayDebitPaise: number, todayCreditPaise: number, monthDebitPaise: number, weekDebitPaise: number, budgetPct: number | null, budgetLabel: string, dayKey: string) {
+  native?.updateWidget(todayDebitPaise, todayCreditPaise, monthDebitPaise, weekDebitPaise, budgetPct ?? -1, budgetLabel, dayKey);
 }
+
+/** Android 13+ needs a runtime grant before any notification shows. */
+export async function ensureNotifyPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  if (Number(Platform.Version) < 33) return true;
+  const perm = 'android.permission.POST_NOTIFICATIONS' as const;
+  if (await PermissionsAndroid.check(perm)) return true;
+  return (await PermissionsAndroid.request(perm)) === PermissionsAndroid.RESULTS.GRANTED;
+}
+export async function notificationsAllowed(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  return Number(Platform.Version) < 33 || PermissionsAndroid.check('android.permission.POST_NOTIFICATIONS' as const);
+}
+export const postNotification = (title: string, body: string, id: number, sound: boolean) => native?.notify(title, body, id, sound);
+export const saveReportFile = (name: string, content: string, mime: string) => native ? native.saveReport(name, content, mime) : Promise.reject(new Error('Saving files needs the Android app'));

@@ -1,6 +1,17 @@
 package `in`.paisa.tracker
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import androidx.core.app.NotificationCompat
+import java.io.File
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -46,8 +57,60 @@ class PaisaInboxModule(private val ctx: ReactApplicationContext) : ReactContextB
 
   /** Pushes the headline numbers to the home-screen widget. Amounts are in paise; budgetPct is -1 when no budget is set. */
   @ReactMethod
-  fun updateWidget(todayDebit: Double, todayCredit: Double, monthDebit: Double, budgetPct: Int, dayKey: String) {
-    PaisaWidgetProvider.save(ctx, todayDebit.toLong(), todayCredit.toLong(), monthDebit.toLong(), budgetPct, dayKey)
+  fun updateWidget(todayDebit: Double, todayCredit: Double, monthDebit: Double, weekDebit: Double, budgetPct: Int, budgetLabel: String, dayKey: String) {
+    PaisaWidgetProvider.save(ctx, todayDebit.toLong(), todayCredit.toLong(), monthDebit.toLong(), weekDebit.toLong(), budgetPct, budgetLabel, dayKey)
+  }
+
+  /** Posts a budget alert. Two channels so the user's sound preference is honoured (Android fixes sound per channel). */
+  @ReactMethod
+  fun notify(title: String, body: String, id: Int, sound: Boolean) {
+    val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val channel = if (sound) "paisa_alerts" else "paisa_alerts_silent"
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(channel) == null) {
+      val c = NotificationChannel(channel, if (sound) "Budget alerts" else "Budget alerts (silent)", NotificationManager.IMPORTANCE_HIGH)
+      c.description = "Warns you when spending crosses a daily, weekly or monthly budget"
+      c.enableVibration(true)
+      if (sound) {
+        c.setSound(
+          RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+          AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+        )
+      } else c.setSound(null, null)
+      nm.createNotificationChannel(c)
+    }
+    val open = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+    val pi = PendingIntent.getActivity(ctx, id, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    val b = NotificationCompat.Builder(ctx, channel)
+      .setSmallIcon(ctx.applicationInfo.icon)
+      .setContentTitle(title).setContentText(body)
+      .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+      .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_REMINDER)
+      .setContentIntent(pi).setAutoCancel(true)
+    if (sound) b.setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
+    try { nm.notify(id, b.build()) } catch (_: SecurityException) { /* POST_NOTIFICATIONS not granted */ }
+  }
+
+  /** Saves a report into the public Downloads folder and returns where it went. */
+  @ReactMethod
+  fun saveReport(name: String, content: String, mime: String, promise: Promise) {
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val values = ContentValues().apply {
+          put(MediaStore.Downloads.DISPLAY_NAME, name)
+          put(MediaStore.Downloads.MIME_TYPE, mime)
+          put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Paisa")
+        }
+        val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw IllegalStateException("Could not create file")
+        ctx.contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray(Charsets.UTF_8)) }
+        promise.resolve("Downloads/Paisa/$name")
+      } else {
+        val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Paisa").apply { mkdirs() }
+        File(dir, name).writeText(content, Charsets.UTF_8)
+        promise.resolve("Downloads/Paisa/$name")
+      }
+    } catch (e: Exception) {
+      promise.reject("E_REPORT", e.message, e)
+    }
   }
 
   @ReactMethod

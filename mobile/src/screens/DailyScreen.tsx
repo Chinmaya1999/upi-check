@@ -6,6 +6,7 @@ import { useTheme, space } from '../theme';
 import { useStore } from '../data/store';
 import { Card, Tap } from '../components/ui';
 import { SyncCard } from '../components/SyncCard';
+import { AnalyticsHeader } from '../components/AnalyticsHeader';
 
 const APP_LABEL: Record<PaymentApp, string> = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', bank_app: 'Bank app', unknown: 'Bank / other' };
 
@@ -29,13 +30,7 @@ export function DailyScreen() {
       data={days}
       keyExtractor={(d) => d.key}
       contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: 120, paddingHorizontal: space.lg, gap: space.md }}
-      ListHeaderComponent={
-        <View style={{ gap: space.md, marginBottom: space.sm }}>
-          <Text style={{ color: colors.text, fontSize: 28, fontWeight: '800', letterSpacing: -0.6 }}>Daily</Text>
-          <SyncCard />
-        </View>
-      }
-      ListEmptyComponent={<Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 24 }}>No transactions yet. Tap “Allow SMS & sync”.</Text>}
+      ListHeaderComponent={txns.length ? <AnalyticsHeader /> : <View style={{ gap: space.md }}><Text style={{ color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.8 }}>Analytics</Text><SyncCard /></View>}
       renderItem={({ item: d }) => (
         <Card style={{ gap: 10 }}>
           <Tap onPress={() => setOpen(open === d.key ? null : d.key)} label={`Day ${dayLabel(d.key)}`}>

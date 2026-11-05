@@ -58,6 +58,17 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="6dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_pill"
+        android:orientation="vertical"
+        android:padding="8dp">
+      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="This week" android:textColor="#99FFFFFF" android:textSize="10sp"/>
+      <TextView android:id="@+id/w_week" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₹0" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:layout_weight="1"
         android:background="@drawable/widget_pill"
         android:orientation="vertical"
@@ -66,6 +77,16 @@
       <TextView android:id="@+id/w_month" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="₹0" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
     </LinearLayout>
   </LinearLayout>
+
+  <ProgressBar
+      android:id="@+id/w_bar"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="6dp"
+      android:layout_marginTop="10dp"
+      android:max="100"
+      android:progress="0"
+      android:progressDrawable="@drawable/widget_bar_fill"/>
 
   <TextView
       android:id="@+id/w_hint"

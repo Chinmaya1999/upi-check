@@ -11,6 +11,7 @@ import { SyncCard } from '../components/SyncCard';
 import { ExpenseBanner } from '../components/ExpenseBanner';
 import { AnimatedAmount } from '../components/AnimatedAmount';
 import { BudgetRing, DailyBars } from '../components/Charts';
+import { BudgetStrip } from '../components/BudgetStrip';
 import { TransactionRow } from '../components/TransactionRow';
 import type { Profile } from '../data/session';
 
@@ -66,6 +67,8 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
       ) : (
         <>
           <ExpenseBanner d={d} />
+
+          <Animated.View entering={enter(0)}><BudgetStrip /></Animated.View>
 
           <Animated.View entering={enter(0)} style={{ flexDirection: 'row', gap: space.md }}>
             <Card style={{ flex: 1, padding: space.md + 2 }}>

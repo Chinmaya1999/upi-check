@@ -27,10 +27,10 @@ class PaisaWidgetProvider : AppWidgetProvider() {
     private fun istDay(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }.format(Date())
 
     /** Called from JS after every data change. */
-    fun save(context: Context, todayDebit: Long, todayCredit: Long, monthDebit: Long, budgetPct: Int, dayKey: String) {
+    fun save(context: Context, todayDebit: Long, todayCredit: Long, monthDebit: Long, weekDebit: Long, budgetPct: Int, budgetLabel: String, dayKey: String) {
       context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-        .putLong("todayDebit", todayDebit).putLong("todayCredit", todayCredit).putLong("monthDebit", monthDebit)
-        .putInt("budgetPct", budgetPct).putString("dayKey", dayKey).putLong("savedAt", System.currentTimeMillis()).apply()
+        .putLong("todayDebit", todayDebit).putLong("todayCredit", todayCredit).putLong("monthDebit", monthDebit).putLong("weekDebit", weekDebit)
+        .putString("budgetLabel", budgetLabel).putInt("budgetPct", budgetPct).putString("dayKey", dayKey).putLong("savedAt", System.currentTimeMillis()).apply()
       refresh(context)
     }
 
@@ -51,12 +51,17 @@ class PaisaWidgetProvider : AppWidgetProvider() {
       v.setTextViewText(R.id.w_spent, rupees(spent))
       v.setTextViewText(R.id.w_credit, rupees(credit))
       v.setTextViewText(R.id.w_month, rupees(sp.getLong("monthDebit", 0)))
+      v.setTextViewText(R.id.w_week, rupees(sp.getLong("weekDebit", 0)))
       v.setTextViewText(R.id.w_updated, if (known) SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(sp.getLong("savedAt", 0))) else "")
       val pct = sp.getInt("budgetPct", -1)
+      val label = sp.getString("budgetLabel", "") ?: ""
+      v.setProgressBar(R.id.w_bar, 100, pct.coerceIn(0, 100), false)
+      v.setViewVisibility(R.id.w_bar, if (pct >= 0) android.view.View.VISIBLE else android.view.View.INVISIBLE)
       v.setTextViewText(R.id.w_hint, when {
         !known -> "Open Paisa to load your data"
-        pct >= 0 -> "$pct% of monthly budget used"
-        else -> "Tap to open Paisa"
+        pct >= 100 -> "⚠ $label budget exceeded ($pct%)"
+        pct >= 0 -> "$label budget · $pct% used"
+        else -> "Tap to open Paisa · set a budget"
       })
       val open = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
       v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))

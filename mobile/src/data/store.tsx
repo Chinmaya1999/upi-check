@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { attributeApps, buildDashboard, generateDemoRaw, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
-import { hasSmsPermission, pushWidget, readInbox } from './inbox';
+import { ensureNotifyPermission, hasSmsPermission, postNotification, pushWidget, readInbox } from './inbox';
+import { DEFAULT_PREFS, PERIOD_LABEL, dueAlerts, spentIn, statuses, tightest, type Limits, type Notif, type Period, type Prefs } from './budgets';
 import * as api from './api';
 
 export interface SyncResult { added: number; scannedSms: number; message: string }
@@ -11,6 +12,13 @@ interface StoreCtx {
   txns: Transaction[];
   dashboard: Dashboard;
   budgetPaise: number | null;
+  limits: Limits;
+  setLimit: (p: Period, paise: number | null) => Promise<void>;
+  prefs: Prefs;
+  setPrefs: (p: Partial<Prefs>) => Promise<void>;
+  notifs: Notif[];
+  clearNotifs: () => Promise<void>;
+  testAlert: () => Promise<boolean>;
   isDemo: boolean;
   error: string | null;
   now: Date;
@@ -34,6 +42,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [txns, setTxns] = useState<Transaction[]>([]);
   const [budgetPaise, setBudgetPaise] = useState<number | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const [limits, setLimits] = useState<Limits>({ day: null, week: null, month: null });
+  const [prefs, setPrefsState] = useState<Prefs>(DEFAULT_PREFS);
+  const [notifs, setNotifs] = useState<Notif[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [lastSync, setLastSync] = useState<number | null>(null);
@@ -45,6 +56,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setTxns(all);
       setBudgetPaise(b ? Number(b) : null);
       setIsDemo(demo === '1');
+      const [ld, lw, pj, nj] = await Promise.all([db.getMeta('limit_day'), db.getMeta('limit_week'), db.getMeta('prefs'), db.getMeta('notifs')]);
+      setLimits({ day: Number(ld) || null, week: Number(lw) || null, month: Number(b) || null });
+      setPrefsState({ ...DEFAULT_PREFS, ...(pj ? JSON.parse(pj) : {}) });
+      setNotifs(nj ? JSON.parse(nj) : []);
       const ls = await db.getMeta('lastSync');
       setLastSync(ls ? Number(ls) : null);
       setNow(new Date());
@@ -80,6 +95,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const setBudget = useCallback(async (paise: number) => { await db.setMeta('budget', String(paise)); await refresh(); }, [refresh]);
+  const setLimit = useCallback(async (p: Period, paise: number | null) => {
+    if (p === 'month') { if (paise) await db.setMeta('budget', String(paise)); else await db.setMeta('budget', '0'); }
+    else await db.setMeta(`limit_${p}`, String(paise ?? 0));
+    if (paise) await ensureNotifyPermission(); // ask once, at the moment it matters
+    await refresh();
+  }, [refresh]);
+  const setPrefs = useCallback(async (patch: Partial<Prefs>) => {
+    await db.setMeta('prefs', JSON.stringify({ ...prefs, ...patch }));
+    if (patch.alerts) await ensureNotifyPermission();
+    await refresh();
+  }, [prefs, refresh]);
+  const clearNotifs = useCallback(async () => { await db.setMeta('notifs', '[]'); await refresh(); }, [refresh]);
+  const testAlert = useCallback(async () => {
+    const ok = await ensureNotifyPermission();
+    if (ok) postNotification('Paisa alerts are on 🔔', 'You will hear this sound when a budget is crossed.', 9000, prefs.sound);
+    return ok;
+  }, [prefs.sound]);
   const reset = useCallback(async () => { await db.clearAll(); await refresh(); }, [refresh]);
 
   const pushing = useRef(false);
@@ -160,15 +192,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
+  // Fire budget alerts (once per day/week/month per level) whenever the numbers change.
+  useEffect(() => {
+    if (!ready || !prefs.alerts) return;
+    (async () => {
+      const due = dueAlerts(statuses(txns, limits, now), now, prefs);
+      if (!due.length) return;
+      const seen: Record<string, 1> = JSON.parse((await db.getMeta('alerted')) ?? '{}');
+      const fresh = due.filter((a) => !seen[a.key]);
+      if (!fresh.length) return;
+      const log: Notif[] = JSON.parse((await db.getMeta('notifs')) ?? '[]');
+      for (const a of fresh) {
+        seen[a.key] = 1;
+        const id = Date.now() % 100000 + log.length;
+        postNotification(a.title, a.body, id, prefs.sound);
+        log.unshift({ id, at: Date.now(), title: a.title, body: a.body, period: a.period, level: a.level });
+      }
+      await db.setMeta('alerted', JSON.stringify(Object.fromEntries(Object.keys(seen).slice(-200).map((k) => [k, 1]))));
+      await db.setMeta('notifs', JSON.stringify(log.slice(0, 50)));
+      setNotifs(log.slice(0, 50));
+    })().catch(() => {});
+  }, [ready, txns, limits, prefs, now]);
+
   // Keep the home-screen widget in step with the dashboard.
   useEffect(() => {
     if (!ready) return;
-    pushWidget(dashboard.today.expensePaise, dashboard.today.incomePaise, dashboard.month.expensePaise, dashboard.budget ? dashboard.budget.usedPct : null, dashboard.today.dayKey);
-  }, [ready, dashboard]);
+    const t = tightest(statuses(txns, limits, now));
+    pushWidget(dashboard.today.expensePaise, dashboard.today.incomePaise, dashboard.month.expensePaise, spentIn(txns, 'week', now), t ? t.pct : null, t ? PERIOD_LABEL[t.period] : '', dashboard.today.dayKey);
+  }, [ready, dashboard, txns, limits, now]);
 
   const value = useMemo(
-    () => ({ ready, txns, dashboard, budgetPaise, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer }),
-    [ready, txns, dashboard, budgetPaise, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer],
+    () => ({ ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer }),
+    [ready, txns, dashboard, budgetPaise, limits, setLimit, prefs, setPrefs, notifs, clearNotifs, testAlert, isDemo, error, now, refresh, loadDemo, addManual, setBudget, reset, syncDevice, lastSync, server, pushToServer, pullFromServer],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
