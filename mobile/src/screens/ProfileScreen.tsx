@@ -85,7 +85,6 @@ export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Prof
 
       <Card style={{ gap: 10 }}>
         <Eyebrow>Data</Eyebrow>
-        {!isDemo && <Button title="Load sample data" variant="ghost" onPress={loadDemo} />}
         <Button title="Delete all my data" variant="ghost" onPress={wipe} />
       </Card>
       <Text style={{ color: colors.textMuted, fontSize: 12, textAlign: 'center' }}>Paisa 0.1.0 · Phase 1</Text>

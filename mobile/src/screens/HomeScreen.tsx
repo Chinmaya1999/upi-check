@@ -7,6 +7,7 @@ import { formatINR } from '@upi/core';
 import { useTheme, space } from '../theme';
 import { useStore } from '../data/store';
 import { Button, Card, Eyebrow, Skeleton, Tap } from '../components/ui';
+import { SyncCard } from '../components/SyncCard';
 import { ExpenseBanner } from '../components/ExpenseBanner';
 import { AnimatedAmount } from '../components/AnimatedAmount';
 import { BudgetRing, DailyBars } from '../components/Charts';
@@ -58,17 +59,10 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
         <Card><Text style={{ color: colors.expense, fontWeight: '700' }}>Couldn't read your local data</Text>
           <Text style={{ color: colors.textMuted, marginTop: 6 }}>{error}</Text></Card>
       ) : txns.length === 0 ? (
-        <Card style={{ alignItems: 'center', gap: space.md, paddingVertical: space.xxl }}>
-          <Ionicons name="wallet-outline" size={44} color={colors.brand} />
-          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>No transactions yet</Text>
-          <Text style={{ color: colors.textMuted, textAlign: 'center', lineHeight: 21 }}>
-            Add a transaction by hand, or explore the app with clearly-labelled sample data. Bank connection arrives with the Account Aggregator phase.
-          </Text>
-          <View style={{ width: '100%', gap: 10, marginTop: 8 }}>
-            <Button title={busy ? 'Loading…' : 'Load sample data'} disabled={busy} onPress={async () => { setBusy(true); await loadDemo(); setBusy(false); }} />
-            <Button title="Add a transaction" variant="ghost" onPress={onAdd} />
-          </View>
-        </Card>
+        <View style={{ gap: space.md }}>
+          <SyncCard />
+          <Button title="Add a transaction" variant="ghost" onPress={onAdd} />
+        </View>
       ) : (
         <>
           <ExpenseBanner d={d} />
@@ -129,12 +123,12 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
           <Animated.View entering={enter(3)}>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
               <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.cardAlt, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={isDemo ? 'flask-outline' : 'link-outline'} size={20} color={colors.textMuted} />
+                <Ionicons name="phone-portrait-outline" size={20} color={colors.textMuted} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: '700' }}>{isDemo ? 'Sample data (demo)' : 'No bank connected'}</Text>
+                <Text style={{ color: colors.text, fontWeight: '700' }}>Live from your phone</Text>
                 <Text style={{ color: colors.textMuted, fontSize: 12.5, marginTop: 2, lineHeight: 18 }}>
-                  {isDemo ? 'Generated on this device. Not from a real bank.' : 'Bank sync via Account Aggregator is not available yet.'}
+                  Read from your bank SMS and payment-app notifications.
                 </Text>
               </View>
               {(d.pendingCount > 0 || d.reviewCount > 0) && (

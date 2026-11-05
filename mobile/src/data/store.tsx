@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { attributeApps, buildDashboard, generateDemoRaw, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
-import { pushWidget, readInbox } from './inbox';
+import { hasSmsPermission, pushWidget, readInbox } from './inbox';
 import * as api from './api';
 
 export interface SyncResult { added: number; scannedSms: number; message: string }
@@ -147,6 +147,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     () => buildDashboard(txns, now, budgetPaise ? { monthlyPaise: budgetPaise } : undefined),
     [txns, now, budgetPaise],
   );
+
+  // Live data only: drop any leftover sample data, then read the phone's SMS on every launch once permission is granted.
+  useEffect(() => {
+    if (!ready) return;
+    (async () => {
+      try {
+        if ((await db.getMeta('demo')) === '1') { await db.clearTxns(); await db.setMeta('demo', '0'); await refresh(); }
+        if (await hasSmsPermission()) await syncDevice();
+      } catch { /* the Sync card shows errors on manual sync */ }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   // Keep the home-screen widget in step with the dashboard.
   useEffect(() => {
