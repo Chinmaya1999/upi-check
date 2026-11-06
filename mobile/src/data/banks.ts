@@ -50,6 +50,8 @@ const APPS: Record<string, { name: string; short: string; bg: string }> = {
   jupiter: { name: 'Jupiter', short: 'J', bg: '#FF7A00' },
   fi: { name: 'Fi', short: 'F', bg: '#00B8A9' },
   payzapp: { name: 'PayZapp', short: 'P', bg: '#004C8F' },
+  bharatpe: { name: 'BharatPe', short: 'B', bg: '#00B67A' },
+  fampay: { name: 'FamPay', short: 'F', bg: '#FFB800' },
   bank_app: { name: 'Bank app', short: '₹', bg: '#475467' },
 };
 

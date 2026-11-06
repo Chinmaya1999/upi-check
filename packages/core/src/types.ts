@@ -13,7 +13,7 @@ export type PaymentChannel = 'upi' | 'bank_transfer' | 'card' | 'cash' | 'other'
  */
 export type PaymentApp =
   | 'gpay' | 'phonepe' | 'paytm' | 'bhim' | 'amazonpay' | 'cred' | 'mobikwik' | 'freecharge' | 'airtel' | 'jio'
-  | 'slice' | 'navi' | 'jupiter' | 'fi' | 'payzapp' | 'bank_app' | 'unknown';
+  | 'slice' | 'navi' | 'jupiter' | 'fi' | 'payzapp' | 'bharatpe' | 'fampay' | 'bank_app' | 'unknown';
 
 /**
  * How a transaction participates in totals.

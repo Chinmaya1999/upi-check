@@ -69,6 +69,8 @@ class PaisaNotificationListener : NotificationListenerService() {
       "com.google.android.apps.nbu.paisa.user", "com.phonepe.app", "net.one97.paytm", "in.org.npci.upiapp",
       "in.amazon.mShop.android.shopping", "com.dreamplug.androidapp", "com.mobikwik_new", "com.freecharge.android",
       "com.myairtelapp", "com.jio.myjio", "indwin.c3.shareapp", "com.naviapp", "money.jupiter", "com.epifi.paisa", "com.enstage.wibmo.hdfc",
+      "com.bharatpe.app", "com.fampay.in", "com.sliceit.app", "com.sbi.upi", "com.pnb.onestop", "com.infrasoft.uboi",
+      "com.kotak811mobilebankingapp.instantsavingsupiscanandpayrecharge", "com.upi.axispay",
       // Bank apps
       "com.snapwork.hdfc", "com.sbi.lotusintouch", "com.sbi.SBIFreedomPlus", "com.csam.icici.bank.imobile", "com.icicibank.pockets",
       "com.axis.mobile", "com.msf.kbank.mobile", "com.bankofbaroda.mconnect", "com.canarabank.mobility", "com.idfcfirstbank.optimus", "com.yesbank",

@@ -90,6 +90,14 @@ export const APP_PACKAGES: Record<string, PaymentApp> = {
   'money.jupiter': 'jupiter',
   'com.epifi.paisa': 'fi',
   'com.enstage.wibmo.hdfc': 'payzapp',
+  'com.bharatpe.app': 'bharatpe',
+  'com.fampay.in': 'fampay',
+  'com.sliceit.app': 'slice',
+  'com.sbi.upi': 'bank_app',
+  'com.pnb.onestop': 'bank_app',
+  'com.infrasoft.uboi': 'bank_app',
+  'com.kotak811mobilebankingapp.instantsavingsupiscanandpayrecharge': 'bank_app',
+  'com.upi.axispay': 'bank_app',
   // Bank apps
   'com.snapwork.hdfc': 'bank_app',
   'com.sbi.lotusintouch': 'bank_app',
@@ -107,7 +115,7 @@ export const APP_PACKAGES: Record<string, PaymentApp> = {
 /** Display names for every PaymentApp (labels in lists, receipts and the per-app summary). */
 export const PAYMENT_APP_NAMES: Record<PaymentApp, string> = {
   gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', amazonpay: 'Amazon Pay', cred: 'CRED', mobikwik: 'MobiKwik',
-  freecharge: 'Freecharge', airtel: 'Airtel Thanks', jio: 'Jio', slice: 'slice', navi: 'Navi', jupiter: 'Jupiter', fi: 'Fi', payzapp: 'PayZapp',
+  freecharge: 'Freecharge', airtel: 'Airtel Thanks', jio: 'Jio', slice: 'slice', navi: 'Navi', jupiter: 'Jupiter', fi: 'Fi', payzapp: 'PayZapp', bharatpe: 'BharatPe', fampay: 'FamPay',
   bank_app: 'Bank app', unknown: 'Unknown app',
 };
 
@@ -190,9 +198,13 @@ export function attributeApps(all: Transaction[]): { update: Transaction[]; remo
   const bank = all.filter((t) => !t.accountId.startsWith('app:'));
   const update = new Map<string, Transaction>();
   const remove: string[] = [];
+  // "…in your slice bank a/c xx9882" names the account the money moved in. A bank record for a different account is a different payment.
+  const last4Of = (t: Transaction) => JSON.stringify(t.originals).match(/(?:a\/c|acct?|account|card)\W{0,6}(?:no\.?\W{0,3})?(?:x+|\*+|\.+)?\s?(\d{3,4})\b/i)?.[1];
   for (const a of appOnly) {
     const at = Date.parse(a.occurredAt);
+    const aL4 = last4Of(a);
     const hit = bank
+      .filter((b) => { const bL4 = b.accountId.split(':')[1]; return !(aL4 && bL4 && /^\d{3,4}$/.test(bL4) && aL4 !== bL4); })
       .filter((b) => b.direction === a.direction && b.amountPaise === a.amountPaise && Math.abs(Date.parse(b.occurredAt) - at) <= WINDOW_MS)
       .sort((x, y) => Math.abs(Date.parse(x.occurredAt) - at) - Math.abs(Date.parse(y.occurredAt) - at))
       .find((b) => (update.get(b.id) ?? b).paymentApp === 'unknown' || (update.get(b.id) ?? b).paymentApp === a.paymentApp);

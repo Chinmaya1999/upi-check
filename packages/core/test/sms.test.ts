@@ -65,3 +65,15 @@ describe('app notifications + attribution', () => {
     expect(rows).toEqual([{ app: 'unknown', debitPaise: 45000, creditPaise: 500000, count: 2 }]);
   });
 });
+
+describe('slice bank credit is its own account, not the same-amount Canara credit', () => {
+  it('keeps both', () => {
+    const T = Date.parse('2026-11-06T18:05:00Z');
+    const bank = parseBankSms({ id: 1, address: 'AD-CANBNK-S', body: 'Dear Customer, Acct XXXX3804 credited with INR 10.00 on 06/11/26 from CHINMAYA KUM; UPI:435853737587; Bal INR 54.42-CanaraBank', date: T })!;
+    const app = parseAppNotification({ id: 'a', pkg: 'indwin.c3.shareapp', title: 'UPI payment received!', text: "You've got ₹10 from CHINMAYA KUMAR MALLI in your slice bank a/c xx9882. Avl. Bal. ₹101.23", postedAt: T + 60000 })!;
+    expect(app).toMatchObject({ direction: 'credit', amount: '10' });
+    const { store } = ingestBatch([bank, app], { existing: [], consents: [{ id: 'c', accountId: '*', sources: ['sms', 'notification'], status: 'active' }], now: new Date('2026-11-06T23:40:00+05:30') });
+    const r = attributeApps(store);
+    expect(r.remove).toHaveLength(0);
+  });
+});
