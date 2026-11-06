@@ -50,7 +50,7 @@ export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Prof
         <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: colors.onBrand, fontSize: 24, fontWeight: '800' }}>{profile.name[0]?.toUpperCase()}</Text>
         </View>
-        <View><Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{profile.name}</Text><Text style={{ color: colors.textMuted }}>{profile.contact}</Text></View>
+        <View><Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{profile.name.trim().replace(/(^|\s)(\S)/g, (_, sp: string, c: string) => sp + c.toUpperCase())}</Text><Text style={{ color: colors.textMuted }}>{profile.contact}</Text></View>
       </Card>
 
       <Card>

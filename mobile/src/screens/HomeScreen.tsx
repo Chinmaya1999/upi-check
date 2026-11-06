@@ -17,8 +17,10 @@ import type { Profile } from '../data/session';
 
 const greeting = () => {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 };
+/** "chinmaya kumar" -> "Chinmaya Kumar" (first letter of every word upper-case). */
+const capitalize = (s: string) => s.trim().replace(/(^|\s)(\S)/g, (_, sp, c) => sp + c.toUpperCase());
 
 export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onAdd: () => void; onSeeAll: () => void }) {
   const { colors } = useTheme();
@@ -40,7 +42,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View>
           <Text style={{ color: colors.textMuted, fontSize: 14 }}>{greeting()}</Text>
-          <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}>{profile.name.split(' ')[0]}</Text>
+          <Text style={{ color: colors.text, fontSize: 24, fontWeight: '800', letterSpacing: -0.5 }}>{capitalize(profile.name).split(' ')[0]}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Tap onPress={onAdd} label="Add transaction" style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>

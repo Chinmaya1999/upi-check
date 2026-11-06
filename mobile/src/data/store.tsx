@@ -1,3 +1,4 @@
+import { AppState } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { attributeApps, buildDashboard, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
@@ -29,7 +30,8 @@ interface StoreCtx {
   removeTxn: (id: string) => Promise<void>;
   reset: () => Promise<void>;
   /** Pull new bank SMS + payment-app notifications from this device. */
-  syncDevice: () => Promise<SyncResult>;
+  /** `auto` = background poll: skips all work (and UI churn) when nothing new has arrived. */
+  syncDevice: (auto?: boolean) => Promise<SyncResult>;
   lastSync: number | null;
   /** Server backup state. */
   server: { state: 'idle' | 'syncing' | 'ok' | 'error'; message: string | null; at: number | null };
@@ -139,13 +141,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const syncing = useRef(false);
-  const syncDevice = useCallback<StoreCtx['syncDevice']>(async () => {
+  const syncDevice = useCallback<StoreCtx['syncDevice']>(async (auto = false) => {
     if (syncing.current) return { added: 0, scannedSms: 0, message: 'Sync already running' };
     syncing.current = true;
     try {
       const at = new Date();
       const since = Number((await db.getMeta('smsCursor')) ?? 0);
       const batch = await readInbox(since);
+      if (auto && !batch.sms.length && !batch.notifications.length) {
+        if (batch.newestSmsAt > since) await db.setMeta('smsCursor', String(batch.newestSmsAt)); // skip past non-bank SMS
+        return { added: 0, scannedSms: batch.scannedSms, message: 'Nothing new.' };
+      }
       // First real data replaces sample data so demo and real numbers are never mixed.
       if ((await db.getMeta('demo')) === '1' && (batch.sms.length || batch.notifications.length)) {
         await db.clearTxns();
@@ -193,6 +199,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  // Live updates: a new bank SMS / payment notification shows up on its own, no pull-to-refresh needed.
+  // Polls every few seconds while the app is on screen (cheap: only SMS newer than the cursor are read)
+  // and catches up immediately when the app returns from the background.
+  useEffect(() => {
+    if (!ready) return;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const tick = () => { syncDevice(true).catch(() => {}); };
+    const start = () => { if (!timer) { tick(); timer = setInterval(tick, 4000); } };
+    const stop = () => { if (timer) { clearInterval(timer); timer = undefined; } };
+    if (AppState.currentState === 'active') start();
+    const sub = AppState.addEventListener('change', (st) => (st === 'active' ? start() : stop()));
+    return () => { stop(); sub.remove(); };
+  }, [ready, syncDevice]);
 
   // Fire budget alerts (once per day/week/month per level) whenever the numbers change.
   useEffect(() => {
