@@ -23,7 +23,8 @@ class PaisaWidgetProvider : AppWidgetProvider() {
     const val PREFS = "paisa_widget"
 
     private val inr = NumberFormat.getIntegerInstance(Locale("en", "IN"))
-    fun rupees(paise: Long) = "₹" + inr.format(paise / 100)
+    /** Nearest rupee, same rule as the app (formatINR with decimals off), so widget and app always match. */
+    fun rupees(paise: Long) = "₹" + inr.format((paise + 50) / 100)
     private fun istDay(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }.format(Date())
 
     /** Called from JS after every data change. */
