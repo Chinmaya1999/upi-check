@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, SectionList, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, SectionList, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,10 @@ import { TransactionRow } from '../components/TransactionRow';
 import { BankBadge } from '../components/BankBadge';
 import { TxnDetail } from '../components/TxnDetail';
 import { bankOf, type Bank } from '../data/banks';
+import { buildPdf } from '../data/pdf';
+import { saveReportFile } from '../data/inbox';
+import { CATEGORIES } from '@upi/core';
+import { timeLabel } from '../components/TransactionRow';
 
 type Filter = 'all' | 'debit' | 'credit';
 const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, { id: 'debit', label: 'Debit' }, { id: 'credit', label: 'Credit' }];
@@ -27,10 +31,12 @@ const dayTitle = (k: string) => {
 const sum = (list: Transaction[]) => list.filter(counted).reduce((a, t) => (t.direction === 'debit' ? { ...a, d: a.d + t.amountPaise } : { ...a, c: a.c + t.amountPaise }), { d: 0, c: 0 });
 
 type Range = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'lastmonth' | 'pick';
+// Opens on "Today"; every other range (including all time) is one tap away.
 const RANGES: { id: Range; label: string }[] = [
-  { id: 'all', label: 'All time' }, { id: 'today', label: 'Today' }, { id: 'yesterday', label: 'Yesterday' },
-  { id: 'week', label: 'This week' }, { id: 'month', label: 'This month' }, { id: 'lastmonth', label: 'Last month' }, { id: 'pick', label: 'Pick a day' },
+  { id: 'today', label: 'Today' }, { id: 'yesterday', label: 'Yesterday' }, { id: 'week', label: 'This week' }, { id: 'month', label: 'This month' },
+  { id: 'lastmonth', label: 'Last month' }, { id: 'pick', label: 'Pick a day' }, { id: 'all', label: 'All time' },
 ];
+const fmtDate = (k: string) => `${k.slice(8)}-${k.slice(5, 7)}-${k.slice(0, 4)}`;
 function rangeBounds(r: Range, now: Date, day: string | null): { from: string; to: string } | null {
   const today = dayKeyOf(now);
   if (r === 'today') return { from: today, to: today };
@@ -49,7 +55,8 @@ export function TransactionsScreen() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const { txns: allTxns, ready, now, removeTxn } = useStore();
-  const [range, setRange] = useState<Range>('all');
+  const [range, setRange] = useState<Range>('today');
+  const [exporting, setExporting] = useState(false);
   const [day, setDay] = useState<string | null>(null);
   const bounds = rangeBounds(range, now, day);
   const txns = useMemo(() => (bounds ? allTxns.filter((t) => t.dayKey >= bounds.from && t.dayKey <= bounds.to) : allTxns), [allTxns, bounds?.from, bounds?.to]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -83,6 +90,36 @@ export function TransactionsScreen() {
     return { rows, data: [...days].map(([k, list]) => ({ key: k, title: dayTitle(k), data: list, ...sum(list) })) };
   }, [txns, selected, filter, q]);
   const tot = sum(sections.rows);
+
+  /** Saves exactly what is on screen (date range, bank, debit/credit, search) as a PDF in Downloads/Paisa. */
+  const exportPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const rangeLabel = RANGES.find((r) => r.id === range)!.label;
+      const span = bounds ? (bounds.from === bounds.to ? fmtDate(bounds.from) : `${fmtDate(bounds.from)} to ${fmtDate(bounds.to)}`) : 'every transaction on record';
+      const filters = [selected ? `Bank: ${selected.bank.name}` : null, filter !== 'all' ? `Type: ${filter === 'debit' ? 'Debit only' : 'Credit only'}` : null, q.trim() ? `Search: "${q.trim()}"` : null].filter(Boolean) as string[];
+      const rows = [...sections.rows].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
+      const stamp = new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+      const pdf = buildPdf({
+        title: 'Transactions report',
+        subtitle: [`Period: ${rangeLabel} (${span})`, filters.length ? `Filters: ${filters.join('  |  ')}` : 'Filters: none', `${rows.length} transaction${rows.length === 1 ? '' : 's'}`],
+        summary: [{ label: 'Total spent', value: formatINR(tot.d), color: '#E5484D' }, { label: 'Total received', value: formatINR(tot.c), color: '#12B886' }, { label: 'Net', value: `${tot.c - tot.d < 0 ? '-' : ''}${formatINR(Math.abs(tot.c - tot.d))}`, color: '#141629' }],
+        columns: [{ title: 'Date', w: 62 }, { title: 'Time', w: 52 }, { title: 'Merchant', w: 150 }, { title: 'Category', w: 88 }, { title: 'Bank / app', w: 78 }, { title: 'Amount', w: 93, align: 'right' }],
+        rows: rows.map((t) => ({
+          cells: [fmtDate(t.dayKey), timeLabel(t.occurredAt), t.merchant, CATEGORIES.find((c) => c.id === t.categoryId)?.label ?? 'Other', bankOf(t).name.replace(/ (Payments )?Bank$/, ''),
+            `${t.direction === 'debit' ? '-' : '+'}${formatINR(t.amountPaise)}${t.status !== 'confirmed' ? ` (${t.status})` : ''}`],
+          color: t.direction === 'debit' ? '#E5484D' : '#12B886',
+        })),
+        footer: `Generated by Paisa on ${stamp}`,
+      });
+      const name = `Paisa-transactions-${range}-${dayKeyOf(now)}-${Date.now() % 100000}.pdf`;
+      const where = await saveReportFile(name, pdf, 'application/pdf');
+      Alert.alert('PDF saved', `${rows.length} transactions saved to ${where}\n\nOpen your Files or Downloads app to view or share it.`);
+    } catch (e) {
+      Alert.alert('Could not create the PDF', (e as Error).message);
+    } finally { setExporting(false); }
+  };
 
   const bankStrip = (
     <View style={{ marginHorizontal: -space.lg }}>
@@ -127,7 +164,14 @@ export function TransactionsScreen() {
 
   const header = (
     <View style={{ gap: space.md, paddingTop: insets.top + space.md, paddingBottom: space.sm, backgroundColor: colors.bg }}>
-      <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.8 }}>Transactions</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ color: colors.text, fontSize: 30, fontWeight: '800', letterSpacing: -0.8 }}>Transactions</Text>
+        <Tap onPress={exportPdf} disabled={exporting} label="Download these transactions as PDF"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 38, borderRadius: 19, backgroundColor: colors.brand }}>
+          {exporting ? <ActivityIndicator size="small" color={colors.onBrand} /> : <Ionicons name="download-outline" size={17} color={colors.onBrand} />}
+          <Text style={{ color: colors.onBrand, fontWeight: '800', fontSize: 13 }}>PDF</Text>
+        </Tap>
+      </View>
       {banks.length > 0 && bankStrip}
       <View style={{ marginHorizontal: -space.lg }}>
         <FlatList horizontal showsHorizontalScrollIndicator={false} data={RANGES} keyExtractor={(x) => x.id} contentContainerStyle={{ paddingHorizontal: space.lg, gap: 8 }}
@@ -195,8 +239,8 @@ export function TransactionsScreen() {
         ListHeaderComponent={header}
         ListEmptyComponent={ready ? (
           <Card style={{ alignItems: 'center', marginTop: space.lg }}>
-            <Text style={{ color: colors.text, fontWeight: '700' }}>{allTxns.length ? 'Nothing matches' : 'No transactions yet'}</Text>
-            <Text style={{ color: colors.textMuted, marginTop: 4 }}>{allTxns.length ? 'Try a different date, bank, filter or search.' : 'Allow SMS access from the Home tab to load your bank alerts.'}</Text>
+            <Text style={{ color: colors.text, fontWeight: '700' }}>{!allTxns.length ? 'No transactions yet' : range === 'today' && !q && filter === 'all' && !selected ? 'No transactions today yet' : 'Nothing matches'}</Text>
+            <Text style={{ color: colors.textMuted, marginTop: 4, textAlign: 'center' }}>{!allTxns.length ? 'Allow SMS access from the Home tab to load your bank alerts.' : range === 'today' ? 'New payments appear here the moment they happen. Tap "All time" or another date above to see earlier ones.' : 'Try a different date, bank, filter or search.'}</Text>
           </Card>
         ) : undefined}
         renderSectionHeader={({ section: s }) => (
