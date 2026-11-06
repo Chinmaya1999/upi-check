@@ -88,8 +88,8 @@ export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Prof
 
       <Card style={{ gap: 10 }}>
         <Eyebrow>Account backup</Eyebrow>
-        {row('cloud-done', server.state === 'error' ? 'Backup failed' : server.state === 'syncing' ? 'Backing up…' : server.at ? 'Backed up' : 'Signed in',
-          server.state === 'error' ? (server.message ?? '') : server.at ? `Last backup ${new Date(server.at).toLocaleTimeString()}` : 'Transactions are saved to your account after every sync.')}
+        {row('cloud-done', server.state === 'error' ? (server.offline ? 'Offline — saved on this phone' : 'Backup failed') : server.state === 'syncing' ? 'Backing up…' : server.at ? 'Backed up' : 'Signed in',
+          server.state === 'error' ? (server.offline ? 'Everything is stored locally and will back up automatically when you\'re online again.' : (server.message ?? '')) : server.at ? `Last backup ${new Date(server.at).toLocaleTimeString()}` : 'Transactions are saved to your account after every sync.')}
         <Button title="Back up now" variant="ghost" onPress={() => { pushToServer(); }} />
         <Button title="Sign out" variant="ghost" onPress={signOut} />
       </Card>

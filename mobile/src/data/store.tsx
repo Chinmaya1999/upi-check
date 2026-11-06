@@ -34,7 +34,8 @@ interface StoreCtx {
   syncDevice: (auto?: boolean) => Promise<SyncResult>;
   lastSync: number | null;
   /** Server backup state. */
-  server: { state: 'idle' | 'syncing' | 'ok' | 'error'; message: string | null; at: number | null };
+  /** `offline`: the last backup failed because the server couldn't be reached (no internet). Local data keeps working. */
+  server: { state: 'idle' | 'syncing' | 'ok' | 'error'; message: string | null; at: number | null; offline?: boolean };
   pushToServer: () => Promise<boolean>;
   pullFromServer: () => Promise<number>;
 }
@@ -121,12 +122,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const deletes = [...new Set([...pending, ...newDeletes])];
       await api.pushTransactions(await db.loadAll(), deletes);
       await db.setMeta('pendingDeletes', '[]');
-      setServer({ state: 'ok', message: null, at: Date.now() });
+      setServer({ state: 'ok', message: null, at: Date.now(), offline: false });
       return true;
     } catch (e) {
       const pend: string[] = JSON.parse((await db.getMeta('pendingDeletes')) ?? '[]');
       await db.setMeta('pendingDeletes', JSON.stringify([...new Set([...pend, ...newDeletes])]));
-      setServer({ state: 'error', message: (e as Error).message, at: Date.now() });
+      setServer({ state: 'error', message: (e as Error).message, at: Date.now(), offline: (e as api.ApiError).status === 0 });
       return false;
     } finally { pushing.current = false; }
   }, []);
@@ -200,6 +201,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  // Offline-first: everything is read from SMS and stored on the phone, so the app works with no internet.
+  // Any backup that failed (usually: no connection) is retried automatically until it succeeds.
+  const serverRef = useRef(server);
+  serverRef.current = server;
+  useEffect(() => {
+    if (!ready) return;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const retry = () => { if (serverRef.current.state === 'error') pushToServer().catch(() => {}); };
+    const start = () => { if (!timer) { retry(); timer = setInterval(retry, 20_000); } };
+    const stop = () => { if (timer) { clearInterval(timer); timer = undefined; } };
+    if (AppState.currentState === 'active') start();
+    const sub = AppState.addEventListener('change', (st) => (st === 'active' ? start() : stop()));
+    return () => { stop(); sub.remove(); };
+  }, [ready, pushToServer]);
 
   // Live updates: a new bank SMS / payment notification shows up on its own, no pull-to-refresh needed.
   // Polls every few seconds while the app is on screen (cheap: only SMS newer than the cursor are read)

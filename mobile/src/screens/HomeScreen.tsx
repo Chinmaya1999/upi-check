@@ -26,7 +26,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
-  const { ready, txns, dashboard: d, refresh, error } = useStore();
+  const { ready, txns, dashboard: d, refresh, error, server } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +53,15 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
           </View>
         </View>
       </View>
+
+      {server.state === 'error' && server.offline ? (
+        <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.card, borderRadius: 16, padding: space.md }}>
+          <Ionicons name="cloud-offline-outline" size={20} color={colors.textMuted} />
+          <Text style={{ flex: 1, color: colors.textMuted, fontSize: 12.5, lineHeight: 17 }}>
+            You're offline. New payments still appear live from your SMS and are saved on this phone. Backup resumes automatically when you're back online.
+          </Text>
+        </View>
+      ) : null}
 
       {!ready ? (
         <View style={{ gap: space.lg }}>
