@@ -1,4 +1,5 @@
 <resources>
   <string name="app_name">Paisa</string>
+  <string name="widget_small_description">Spent today, updated live</string>
   <string name="widget_description">Spend today, money received and this month at a glance</string>
 </resources>

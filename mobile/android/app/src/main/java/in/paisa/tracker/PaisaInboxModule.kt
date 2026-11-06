@@ -61,6 +61,13 @@ class PaisaInboxModule(private val ctx: ReactApplicationContext) : ReactContextB
     PaisaWidgetProvider.save(ctx, todayDebit.toLong(), todayCredit.toLong(), monthDebit.toLong(), weekDebit.toLong(), budgetPct, budgetLabel, dayKey)
   }
 
+  /** Lock-screen / notification-shade card with today's spend (kept in step by the app, the SMS receiver and the notification listener). */
+  @ReactMethod
+  fun setLockScreenCard(enabled: Boolean) { LiveNotification.setEnabled(ctx, enabled) }
+
+  @ReactMethod
+  fun isLockScreenCardEnabled(promise: Promise) { promise.resolve(LiveNotification.enabled(ctx)) }
+
   /** Posts a budget alert. Two channels so the user's sound preference is honoured (Android fixes sound per channel). */
   @ReactMethod
   fun notify(title: String, body: String, id: Int, sound: Boolean) {

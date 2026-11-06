@@ -23,7 +23,7 @@ class PaisaWidgetProvider : AppWidgetProvider() {
     const val PREFS = "paisa_widget"
 
     private val inr = NumberFormat.getIntegerInstance(Locale("en", "IN"))
-    private fun rupees(paise: Long) = "₹" + inr.format(paise / 100)
+    fun rupees(paise: Long) = "₹" + inr.format(paise / 100)
     private fun istDay(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }.format(Date())
 
     /** Called from JS after every data change. */
@@ -34,10 +34,33 @@ class PaisaWidgetProvider : AppWidgetProvider() {
       refresh(context)
     }
 
+    class Snapshot(val known: Boolean, val spent: Long, val credit: Long, val month: Long, val week: Long, val savedAt: Long)
+
+    /** What the widgets and the lock-screen card show. If the day rolled over since the last update, "today" is genuinely 0. */
+    fun snapshot(context: Context): Snapshot {
+      val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      val known = sp.contains("dayKey")
+      val fresh = sp.getString("dayKey", null) == istDay()
+      return Snapshot(known, if (known && fresh) sp.getLong("todayDebit", 0) else 0, if (known && fresh) sp.getLong("todayCredit", 0) else 0,
+        sp.getLong("monthDebit", 0), sp.getLong("weekDebit", 0), sp.getLong("savedAt", 0))
+    }
+
+    /** Repaints every placed widget (large + small) and the lock-screen card. */
     fun refresh(context: Context) {
       val mgr = AppWidgetManager.getInstance(context)
-      val ids = mgr.getAppWidgetIds(ComponentName(context, PaisaWidgetProvider::class.java))
-      ids.forEach { mgr.updateAppWidget(it, render(context)) }
+      mgr.getAppWidgetIds(ComponentName(context, PaisaWidgetProvider::class.java)).forEach { mgr.updateAppWidget(it, render(context)) }
+      mgr.getAppWidgetIds(ComponentName(context, PaisaSmallWidgetProvider::class.java)).forEach { mgr.updateAppWidget(it, renderSmall(context)) }
+      LiveNotification.update(context)
+    }
+
+    internal fun renderSmall(context: Context): RemoteViews {
+      val s = snapshot(context)
+      val v = RemoteViews(context.packageName, R.layout.widget_small)
+      v.setTextViewText(R.id.s_spent, if (s.known) rupees(s.spent) else "₹0")
+      v.setTextViewText(R.id.s_sub, if (s.known) "Received ${rupees(s.credit)}" else "Open Paisa to start")
+      val open = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+      v.setOnClickPendingIntent(R.id.small_root, PendingIntent.getActivity(context, 1, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+      return v
     }
 
     private fun render(context: Context): RemoteViews {
@@ -67,5 +90,12 @@ class PaisaWidgetProvider : AppWidgetProvider() {
       v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
       return v
     }
+  }
+}
+
+/** Compact 2x1 widget: just "Spent today" and the amount. */
+class PaisaSmallWidgetProvider : AppWidgetProvider() {
+  override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
+    ids.forEach { manager.updateAppWidget(it, PaisaWidgetProvider.renderSmall(context)) }
   }
 }

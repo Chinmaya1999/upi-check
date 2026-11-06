@@ -3,6 +3,7 @@
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" tools:replace="android:maxSdkVersion"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.READ_SMS"/>
+  <uses-permission android:name="android.permission.RECEIVE_SMS"/>
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
   <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
@@ -25,6 +26,17 @@
         <action android:name="android.service.notification.NotificationListenerService"/>
       </intent-filter>
     </service>
+    <receiver android:name=".PaisaSmsReceiver" android:exported="true" android:permission="android.permission.BROADCAST_SMS">
+      <intent-filter android:priority="500">
+        <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+      </intent-filter>
+    </receiver>
+    <receiver android:name=".PaisaSmallWidgetProvider" android:exported="true" android:label="Paisa (small)">
+      <intent-filter>
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+      </intent-filter>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/paisa_small_widget_info"/>
+    </receiver>
     <receiver android:name=".PaisaWidgetProvider" android:exported="true" android:label="Paisa">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>

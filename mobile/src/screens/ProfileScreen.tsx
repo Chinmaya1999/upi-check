@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,11 +8,14 @@ import { Button, Card, Eyebrow } from '../components/ui';
 import { SyncCard } from '../components/SyncCard';
 import { clearProfile, saveProfile, type Profile } from '../data/session';
 import * as api from '../data/api';
+import { ensureNotifyPermission, lockScreenCardEnabled, setLockScreenCard } from '../data/inbox';
 
 export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Profile; onProfile: (p: Profile) => void; onSignOut: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { reset, txns, server, pushToServer } = useStore();
+  const [lockCard, setLockCard] = useState(true);
+  useEffect(() => { lockScreenCardEnabled().then(setLockCard).catch(() => {}); }, []);
 
   const row = (icon: string, title: string, sub: string, right?: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>
@@ -62,6 +65,14 @@ export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Prof
             </View>
           ))}
         </View>
+      </Card>
+
+      <Card>
+        <Eyebrow>Widgets & lock screen</Eyebrow>
+        {row('lock-closed', 'Show spend on lock screen', 'A quiet card with today\'s spend, updated the moment a payment SMS arrives',
+          <Switch value={lockCard} trackColor={{ true: colors.brand }} accessibilityLabel="Show spend on lock screen"
+            onValueChange={async (v) => { setLockCard(v); if (v) await ensureNotifyPermission(); setLockScreenCard(v); }} />)}
+        {row('apps', 'Home-screen widgets', 'Long-press your home screen → Widgets → Paisa. Pick the small (2×1) or large (4×2) one.')}
       </Card>
 
       <Card>

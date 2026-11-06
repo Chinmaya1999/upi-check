@@ -9,6 +9,8 @@ interface Native {
   updateWidget(todayDebit: number, todayCredit: number, monthDebit: number, weekDebit: number, budgetPct: number, budgetLabel: string, dayKey: string): void;
   notify(title: string, body: string, id: number, sound: boolean): void;
   saveReport(name: string, content: string, mime: string): Promise<string>;
+  setLockScreenCard(enabled: boolean): void;
+  isLockScreenCardEnabled(): Promise<boolean>;
 }
 const native: Native | undefined = Platform.OS === 'android' ? NativeModules.PaisaInbox : undefined;
 
@@ -26,8 +28,20 @@ export async function requestSmsPermission(): Promise<boolean> {
     buttonPositive: 'Allow',
     buttonNegative: 'Not now',
   });
+  if (r === PermissionsAndroid.RESULTS.GRANTED) await ensureReceiveSms();
   return r === PermissionsAndroid.RESULTS.GRANTED;
 }
+
+/** Lets the widgets and lock-screen card update the instant a bank SMS arrives, even with the app closed.
+ *  Same permission group as READ_SMS, so Android grants it without another dialog. */
+export async function ensureReceiveSms(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  const p = PermissionsAndroid.PERMISSIONS.RECEIVE_SMS;
+  if (!(await PermissionsAndroid.check(p))) await PermissionsAndroid.request(p);
+}
+
+export const setLockScreenCard = (on: boolean) => native?.setLockScreenCard(on);
+export const lockScreenCardEnabled = () => native?.isLockScreenCardEnabled() ?? Promise.resolve(false);
 
 export const notificationAccessEnabled = () => native?.isNotificationAccessEnabled() ?? Promise.resolve(false);
 export const openNotificationAccess = () => native?.openNotificationAccessSettings();

@@ -2,7 +2,7 @@ import { AppState } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { attributeApps, buildDashboard, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
-import { ensureNotifyPermission, hasSmsPermission, postNotification, pushWidget, readInbox } from './inbox';
+import { ensureNotifyPermission, ensureReceiveSms, hasSmsPermission, lockScreenCardEnabled, postNotification, pushWidget, readInbox } from './inbox';
 import { dedupeNear } from './dedupe';
 import { DEFAULT_PREFS, PERIOD_LABEL, dueAlerts, spentIn, statuses, tightest, type Limits, type Notif, type Period, type Prefs } from './budgets';
 import * as api from './api';
@@ -194,7 +194,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Sample records from old builds (possibly restored from the server) never belong in real data.
         const sample = (await db.loadAll()).filter((t) => t.accountId.startsWith('demo-')).map((t) => t.id);
         if (sample.length) { await db.deleteMany(sample); await refresh(); pushToServer(sample); }
-        if (await hasSmsPermission()) await syncDevice();
+        if (await hasSmsPermission()) { await ensureReceiveSms(); await syncDevice(); }
+        if (await lockScreenCardEnabled()) await ensureNotifyPermission(); // the lock-screen card is a notification
       } catch { /* the Sync card shows errors on manual sync */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps

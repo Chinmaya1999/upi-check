@@ -17,6 +17,8 @@ class PaisaNotificationListener : NotificationListenerService() {
     val title = ex.getCharSequence("android.title")?.toString() ?: ""
     val text = (ex.getCharSequence("android.bigText") ?: ex.getCharSequence("android.text"))?.toString() ?: ""
     if (title.isBlank() && text.isBlank()) return
+    // Update widgets / lock-screen card right away, even when the app is closed. The app recomputes exactly on next sync.
+    try { LiveTotals.parseNotification(sbn.packageName, title, text)?.let { LiveTotals.record(this, it, sbn.postTime) } } catch (_: Exception) { }
     val sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     synchronized(LOCK) {
       val arr = JSONArray(sp.getString(KEY, "[]"))
