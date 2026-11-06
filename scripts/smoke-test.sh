@@ -28,7 +28,12 @@ TOKEN=$(jq -r .token /tmp/smoke.body); [ -n "$TOKEN" ] && [ "$TOKEN" != null ] |
 cleanup() { curl -sS -m 10 -o /dev/null -X DELETE "$BASE/me" -H "Authorization: Bearer ${CLEAN_TOKEN:-$TOKEN}" || true; }
 trap cleanup EXIT
 A=(-H "Authorization: Bearer $TOKEN")
-expect "admin API requires sign-in"   401 "$(req "$BASE/admin/api/stats")"   # 404 here means ADMIN_PASSWORD is not configured on the server
+code=$(req "$BASE/admin/api/stats")
+case "$code" in
+  401) pass "admin API requires sign-in" ;;
+  404) echo "  warn admin dashboard is DISABLED on the server (set the ADMIN_PASSWORD secret and redeploy)" ;;
+  *)   fail "admin API requires sign-in" "want 401 (or 404 when disabled) got $code" ;;
+esac
 expect "GET /config (public)"         200 "$(req "$BASE/config")"
 expect "GET /me: no token"            401 "$(req "$BASE/me")"
 expect "GET /me"                      200 "$(req "$BASE/me" "${A[@]}")"
