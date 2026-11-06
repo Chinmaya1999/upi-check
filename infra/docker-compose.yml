@@ -3,6 +3,8 @@ services:
     image: ${IMAGE:?set IMAGE}
     container_name: paisa-api
     restart: unless-stopped
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}          # from ~/paisa/.env (written by CI); empty = admin dashboard disabled
     ports:
       - "80:3000"
     volumes:

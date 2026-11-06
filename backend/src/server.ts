@@ -2,6 +2,7 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
+import { createAdmin } from './admin';
 
 const PORT = Number(process.env.PORT ?? 80);
 const DB_PATH = process.env.DB_PATH ?? './paisa-server.db';
@@ -26,7 +27,19 @@ db.exec(`
     PRIMARY KEY (user_id, id)
   );
   CREATE INDEX IF NOT EXISTS txns_user_day ON txns (user_id, day_key);
+  CREATE TABLE IF NOT EXISTS app_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, action TEXT NOT NULL, target TEXT, detail TEXT, ip TEXT
+  );
 `);
+// Additive migrations for databases created before the admin dashboard existed.
+function addColumn(table: string, col: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
+}
+addColumn('users', 'status', "TEXT NOT NULL DEFAULT 'active'");
+addColumn('users', 'last_login_at', 'TEXT');
+addColumn('sessions', 'created_at', 'INTEGER NOT NULL DEFAULT 0');
 
 class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
 
@@ -35,25 +48,27 @@ const hashPw = (pw: string, salt: string) => crypto.scryptSync(pw, salt, 64).toS
 const normContact = (c: string) => c.trim().toLowerCase().replace(/[\s-]/g, '');
 const validContact = (c: string) => /^[6-9]\d{9}$/.test(c) || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c);
 
-interface UserRow { id: string; name: string; contact: string; pass_hash: string; salt: string }
+interface UserRow { id: string; name: string; contact: string; pass_hash: string; salt: string; status: string }
 
 const q = {
   userByContact: db.prepare('SELECT * FROM users WHERE contact = ?'),
   insertUser: db.prepare('INSERT INTO users (id, name, contact, pass_hash, salt, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
-  insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)'),
-  sessionUser: db.prepare('SELECT u.id, u.name, u.contact FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ?'),
+  insertSession: db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'),
+  sessionUser: db.prepare('SELECT u.id, u.name, u.contact FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ? AND s.expires_at > ? AND u.status = \'active\''),
   delSession: db.prepare('DELETE FROM sessions WHERE token_hash = ?'),
   upsertTxn: db.prepare(`INSERT INTO txns (user_id, id, day_key, occurred_at, fingerprint, json, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id, id) DO UPDATE SET day_key = excluded.day_key, occurred_at = excluded.occurred_at, fingerprint = excluded.fingerprint, json = excluded.json, updated_at = excluded.updated_at`),
   delTxn: db.prepare('DELETE FROM txns WHERE user_id = ? AND id = ?'),
   delUser: db.prepare('DELETE FROM users WHERE id = ?'),
+  touchLogin: db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?'),
   countTxns: db.prepare('SELECT COUNT(*) c FROM txns WHERE user_id = ?'),
   txnsInRange: db.prepare('SELECT json FROM txns WHERE user_id = ? AND day_key >= ? AND day_key <= ? ORDER BY occurred_at DESC'),
 };
 
 function issueToken(userId: string) {
   const token = crypto.randomBytes(32).toString('base64url');
-  q.insertSession.run(sha(token), userId, Date.now() + SESSION_DAYS * 86_400_000);
+  q.insertSession.run(sha(token), userId, Date.now() + SESSION_DAYS * 86_400_000, Date.now());
+  q.touchLogin.run(new Date().toISOString(), userId);
   return token;
 }
 
@@ -92,6 +107,23 @@ function authUser(req: http.IncomingMessage) {
   return { ...u, tokenHash: sha(m![1]!) };
 }
 
+// Admin-controlled runtime settings (see admin.ts). Read per request: one tiny indexed lookup.
+const CONFIG_DEFAULTS = { registrationsOpen: true, syncEnabled: true, maintenanceMode: false, maintenanceMessage: '', announcement: '', minAppVersion: '' };
+type AppConfig = typeof CONFIG_DEFAULTS;
+function getConfig(): AppConfig {
+  const out: Record<string, unknown> = { ...CONFIG_DEFAULTS };
+  for (const r of db.prepare('SELECT key, value FROM app_config').all() as { key: string; value: string }[]) {
+    if (r.key in CONFIG_DEFAULTS) { try { out[r.key] = JSON.parse(r.value); } catch { /* keep default */ } }
+  }
+  return out as AppConfig;
+}
+function assertOnline() {
+  const c = getConfig();
+  if (c.maintenanceMode) throw new HttpError(503, c.maintenanceMessage || 'Paisa is under maintenance. Please try again shortly.');
+}
+
+const admin = createAdmin({ db, HttpError, send, readJson, limit, sha, hashPw, normContact, validContact, getConfig, CONFIG_DEFAULTS });
+
 const isTxn = (t: any): t is Transaction =>
   t && typeof t.id === 'string' && t.id.length < 100 &&
   typeof t.dayKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.dayKey) &&
@@ -106,13 +138,25 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');
   const ip = req.socket.remoteAddress ?? '?';
 
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
+    if (await admin.handle(req, res, url, ip)) return;
+    throw new HttpError(404, 'Not found');
+  }
+
   switch (`${req.method} ${url.pathname}`) {
+    case 'GET /config': {
+      const c = getConfig();
+      return send(res, 200, { maintenanceMode: c.maintenanceMode, maintenanceMessage: c.maintenanceMessage, announcement: c.announcement, minAppVersion: c.minAppVersion, registrationsOpen: c.registrationsOpen });
+    }
+
     case 'GET /':
     case 'GET /health':
       return send(res, 200, { ok: true, service: 'paisa-api', time: new Date().toISOString() });
 
     case 'POST /auth/register': {
       limit(ip);
+      assertOnline();
+      if (!getConfig().registrationsOpen) throw new HttpError(403, 'New sign-ups are paused right now.');
       const b = await readJson(req);
       const name = String(b.name ?? '').trim();
       const contact = normContact(String(b.contact ?? ''));
@@ -129,12 +173,14 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse) {
 
     case 'POST /auth/login': {
       limit(ip);
+      assertOnline();
       const b = await readJson(req);
       const contact = normContact(String(b.contact ?? ''));
       const password = String(b.password ?? '');
       const u = q.userByContact.get(contact) as UserRow | undefined;
       const ok = !!u && crypto.timingSafeEqual(Buffer.from(hashPw(password, u.salt), 'hex'), Buffer.from(u.pass_hash, 'hex'));
       if (!u || !ok) throw new HttpError(401, 'Wrong number/email or password');
+      if (u.status !== 'active') throw new HttpError(403, 'This account has been suspended. Contact support.');
       return send(res, 200, { token: issueToken(u.id), user: { id: u.id, name: u.name, contact: u.contact } });
     }
 
@@ -155,6 +201,8 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse) {
 
     case 'POST /transactions/sync': {
       const u = authUser(req);
+      assertOnline();
+      if (!getConfig().syncEnabled) throw new HttpError(503, 'Cloud sync is temporarily disabled.');
       const b = await readJson(req);
       const list: unknown[] = Array.isArray(b.transactions) ? b.transactions : [];
       const del: unknown[] = Array.isArray(b.deleteIds) ? b.deleteIds : [];

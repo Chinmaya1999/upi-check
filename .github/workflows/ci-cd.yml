@@ -150,6 +150,14 @@ jobs:
         run: |
           scp -i ~/.ssh/deploy.pem infra/deploy.sh infra/backup-db.sh infra/docker-compose.yml \
             "$SERVER_USER@$SERVER_HOST:~/paisa/"
+      - name: Write admin dashboard password to server
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          # Lives only in ~/paisa/.env (mode 600), read by docker compose. Unset secret = dashboard stays disabled.
+          if [ -z "$ADMIN_PASSWORD" ]; then echo "::warning title=ADMIN_PASSWORD secret not set::Admin dashboard will be disabled"; fi
+          printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD" | ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" \
+            "umask 077 && cat > ~/paisa/.env"
       - name: Deploy ${{ github.sha }}
         env:
           DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
