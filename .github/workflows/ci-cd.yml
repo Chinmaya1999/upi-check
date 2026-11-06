@@ -217,7 +217,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --console=plain \
-            -PversionCode=$((3000 + ${{ github.run_number }})) -PversionName=0.5.${{ github.run_number }} \
+            -PversionCode=$((3100 + ${{ github.run_number }})) -PversionName=0.6.${{ github.run_number }} \
             -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a' }} \
             --build-cache --parallel
       - name: Name the artifact
