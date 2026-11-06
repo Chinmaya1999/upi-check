@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { privacyHtml, deleteHtml } from './legal';
-import { sendOtp, sendNotice, type OtpPurpose } from './mail';
+import { sendOtp, sendNotice, mailConfigured, type OtpPurpose } from './mail';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { resolveDesign, resolveFestival, summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
@@ -149,6 +149,8 @@ const OTP_MIN = 10, OTP_RESEND_MS = 45_000, OTP_MAX_TRIES = 5;
 interface OtpRow { key: string; code_hash: string; expires_at: number; attempts: number; sent_at: number; payload: string | null }
 
 async function issueOtp(purpose: OtpPurpose, email: string, payload: unknown, name?: string, scope = email) {
+  // In production a missing mail login must be an error the user can see, not a silent "code sent" that never arrives.
+  if (!mailConfigured && process.env.NODE_ENV === 'production') throw new HttpError(503, 'Email sending is not set up on the server yet. Please try again later.');
   limit(`otp:${email}`, 6, 3_600_000);            // 6 emails / hour / address
   const key = `${purpose}:${scope}`;
   const prev = q.getOtp.get(key) as OtpRow | undefined;

@@ -244,6 +244,19 @@ test('admin can create a verified account (used by the CI smoke test)', async ()
   assert.equal(l.s, 200); assert.equal(l.b.user.emailVerified, true);
 });
 
+test('production without a mail login refuses to pretend an OTP was sent', async () => {
+  const port = PORT + 600;
+  const p2 = spawn('node', ['dist/server.mjs'], { env: { ...process.env, PORT: String(port), DB_PATH: join(dir, 'prod.db'), NODE_ENV: 'production', AUTH_RATE_LIMIT: '100000', NODE_NO_WARNINGS: '1', SMTP_USER: '', SMTP_PASS: '' }, stdio: 'ignore' });
+  try {
+    for (let i = 0; i < 50; i++) { try { if ((await fetch(`http://127.0.0.1:${port}/health`)).ok) break; } catch { /* starting */ } await new Promise((r) => setTimeout(r, 100)); }
+    const r = await fetch(`http://127.0.0.1:${port}/auth/register/start`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'No Mail', email: 'nomail@example.com', password: 'password1' }) });
+    assert.equal(r.status, 503);
+    assert.match((await r.json()).error, /not set up/);
+    const f = await fetch(`http://127.0.0.1:${port}/auth/forgot`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'nomail@example.com' }) });
+    assert.equal(f.status, 200);   // forgot stays uniform (no account enumeration) — it only errors when an account exists and mail is down
+  } finally { p2.kill(); }
+});
+
 test('login lockout per account, unknown accounts throttled too', async () => {
   const id = 'victim@example.com';
   let lockedAt = 0;
