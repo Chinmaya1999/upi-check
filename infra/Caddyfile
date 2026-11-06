@@ -1,0 +1,36 @@
+# HTTPS front end. Caddy obtains and renews Let's Encrypt certificates automatically.
+{
+	email chinmaya.dob1999@gmail.com
+}
+
+# Mobile app API. The admin dashboard is never reachable on this hostname.
+api.paisaduniya.in {
+	encode gzip
+	@admin path /admin /admin/*
+	respond @admin 404
+	reverse_proxy api:3000
+}
+
+# Admin dashboard only: /admin and /admin/api/*. Everything else goes to the dashboard.
+paisaduniya.in {
+	encode gzip
+	@admin path /admin /admin/*
+	handle @admin {
+		reverse_proxy api:3000
+	}
+	handle {
+		redir https://paisaduniya.in/admin 302
+	}
+}
+
+www.paisaduniya.in {
+	redir https://paisaduniya.in{uri} permanent
+}
+
+# Backward compatibility: app builds released before the domain existed call http://13.201.66.53.
+# Plain HTTP stays API-only (no admin) and can be removed once those builds are gone.
+http://13.201.66.53 {
+	@admin path /admin /admin/*
+	respond @admin 404
+	reverse_proxy api:3000
+}

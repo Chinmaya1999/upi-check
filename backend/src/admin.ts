@@ -55,6 +55,8 @@ export function createAdmin(ctx: Ctx) {
     return true;
   };
 
+  /** Cookie gets the Secure flag whenever the browser reached us over HTTPS (Caddy sets X-Forwarded-Proto). */
+  const secure = (req: http.IncomingMessage) => (req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '');
   const like = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const int = (v: string | null, def: number, min: number, max: number) => {
     const n = Number(v);
@@ -194,7 +196,7 @@ export function createAdmin(ctx: Ctx) {
       const token = crypto.randomBytes(32).toString('base64url');
       sessions.set(sha(token), now + ADMIN_SESSION_MS);
       audit('admin.login', null, null, ip);
-      res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${ADMIN_SESSION_MS / 1000}`);
+      res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=${ADMIN_SESSION_MS / 1000}${secure(req)}`);
       return send(res, 200, { ok: true });
     }
 
@@ -204,7 +206,7 @@ export function createAdmin(ctx: Ctx) {
 
     if (method === 'POST' && path === '/logout') {
       const t = cookieToken(req); if (t) sessions.delete(sha(t));
-      res.setHeader('Set-Cookie', `${COOKIE}=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0`);
+      res.setHeader('Set-Cookie', `${COOKIE}=; Path=/admin; HttpOnly; SameSite=Strict; Max-Age=0${secure(req)}`);
       return send(res, 200, { ok: true });
     }
     if (method === 'GET' && path === '/session') return send(res, 200, { ok: true });
@@ -352,6 +354,7 @@ export function createAdmin(ctx: Ctx) {
           'Content-Type': 'text/html; charset=utf-8',
           'Cache-Control': 'no-store',
           'X-Frame-Options': 'DENY',
+          ...(req.headers['x-forwarded-proto'] === 'https' ? { 'Strict-Transport-Security': 'max-age=31536000' } : {}),
           'X-Content-Type-Options': 'nosniff',
           'Referrer-Policy': 'no-referrer',
           'X-Robots-Tag': 'noindex, nofollow',

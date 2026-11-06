@@ -23,11 +23,11 @@ IMAGE="$IMAGE" docker compose -f "$APP/docker-compose.yml" up -d --remove-orphan
 log "Health check"
 ok=false
 for i in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1/health >/dev/null 2>&1; then ok=true; break; fi
+  if curl -fsS http://127.0.0.1:3000/health >/dev/null 2>&1; then ok=true; break; fi
   sleep 2
 done
 if $ok; then
-  echo "healthy: $(curl -fsS http://127.0.0.1/health)"
+  echo "healthy: $(curl -fsS http://127.0.0.1:3000/health)"
   docker image prune -af --filter "until=72h" >/dev/null || true
   exit 0
 fi

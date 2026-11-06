@@ -6,7 +6,20 @@ services:
     environment:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}          # from ~/paisa/.env (written by CI); empty = admin dashboard disabled
     ports:
-      - "80:3000"
+      - "127.0.0.1:3000:3000"                      # host-local only (deploy health check); the public side is Caddy
     volumes:
       - /home/ec2-user/paisa/data:/data          # SQLite database lives on the host, survives redeploys
       - /home/ec2-user/paisa/backups:/backups
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: paisa-caddy
+    restart: unless-stopped
+    depends_on: [api]                               # api is recreated first, which frees port 80 for Caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/ec2-user/paisa/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/ec2-user/paisa/caddy-data:/data      # certificates: keep across redeploys (Let's Encrypt rate limits)
+      - /home/ec2-user/paisa/caddy-config:/config

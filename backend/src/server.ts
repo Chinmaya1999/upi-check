@@ -136,7 +136,8 @@ const loadTxns = (userId: string, from?: string, to?: string): Transaction[] =>
 
 async function route(req: http.IncomingMessage, res: http.ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');
-  const ip = req.socket.remoteAddress ?? '?';
+  // Behind Caddy (the only thing that can reach this port) the real client is in X-Forwarded-For.
+  const ip = String(req.headers['x-forwarded-for'] ?? '').split(',')[0]!.trim() || (req.socket.remoteAddress ?? '?');
 
   if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
     if (await admin.handle(req, res, url, ip)) return;

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-  <!-- Plain HTTP only to the Paisa API host; everything else stays HTTPS-only. -->
-  <domain-config cleartextTrafficPermitted="true">
-    <domain includeSubdomains="false">13.201.66.53</domain>
-  </domain-config>
+  <!-- HTTPS only: the API (https://api.paisaduniya.in) is served with a Let's Encrypt certificate. -->
+  <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

@@ -1,5 +1,5 @@
 /**
- * Paisa backend. Plain HTTP for now — Android is only allowed cleartext to this host (see network_security_config.xml).
- * CI can override at build time with EXPO_PUBLIC_API_URL (the host must also be allowed in network_security_config.xml).
+ * Paisa backend, served over HTTPS (Caddy + Let's Encrypt). Android blocks cleartext traffic entirely (see network_security_config.xml).
+ * CI overrides at build time with EXPO_PUBLIC_API_URL.
  */
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://13.201.66.53';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.paisaduniya.in';

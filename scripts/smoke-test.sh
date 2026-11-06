@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end API check against a live server. Usage: smoke-test.sh http://host   (creates then deletes a throwaway account)
+# End-to-end API check against a live server. Usage: smoke-test.sh https://api-host [https://admin-host]   (creates then deletes a throwaway account)
 set -uo pipefail
 BASE="${1:?usage: smoke-test.sh http://host}"; FAIL=0
 pass() { printf '  ok   %s\n' "$1"; }
@@ -28,7 +28,8 @@ TOKEN=$(jq -r .token /tmp/smoke.body); [ -n "$TOKEN" ] && [ "$TOKEN" != null ] |
 cleanup() { curl -sS -m 10 -o /dev/null -X DELETE "$BASE/me" -H "Authorization: Bearer ${CLEAN_TOKEN:-$TOKEN}" || true; }
 trap cleanup EXIT
 A=(-H "Authorization: Bearer $TOKEN")
-code=$(req "$BASE/admin/api/stats")
+ADMIN="${2:-$BASE}"   # admin dashboard lives on its own hostname
+code=$(req "$ADMIN/admin/api/stats")
 case "$code" in
   401) pass "admin API requires sign-in" ;;
   404) echo "  warn admin dashboard is DISABLED on the server (set the ADMIN_PASSWORD secret and redeploy)" ;;

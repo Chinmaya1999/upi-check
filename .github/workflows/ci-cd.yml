@@ -19,7 +19,8 @@ concurrency:
 env:
   SERVER_HOST: 13.201.66.53
   SERVER_USER: ec2-user
-  API_URL: http://13.201.66.53
+  API_URL: https://api.paisaduniya.in
+  ADMIN_URL: https://paisaduniya.in
   IMAGE: awsmallick1999/paisa-api
 
 jobs:
@@ -148,7 +149,7 @@ jobs:
           ssh-keyscan -T 10 -H "$SERVER_HOST" >> ~/.ssh/known_hosts
       - name: Upload deploy files
         run: |
-          scp -i ~/.ssh/deploy.pem infra/deploy.sh infra/backup-db.sh infra/docker-compose.yml \
+          scp -i ~/.ssh/deploy.pem infra/deploy.sh infra/backup-db.sh infra/docker-compose.yml infra/Caddyfile \
             "$SERVER_USER@$SERVER_HOST:~/paisa/"
       - name: Write admin dashboard password to server
         env:
@@ -171,11 +172,19 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" \
             "(crontab -l 2>/dev/null | grep -v backup-db.sh; echo '0 21 * * * bash \$HOME/paisa/backup-db.sh >> \$HOME/paisa/backups/cron.log 2>&1') | crontab -"
+      - name: Wait for HTTPS certificate
+        run: |
+          # First deploy on a new domain: Caddy needs a few seconds to obtain the Let's Encrypt certificate.
+          for i in $(seq 1 30); do
+            curl -fsS -m 10 "$API_URL/health" >/dev/null 2>&1 && { echo "HTTPS is up"; exit 0; }
+            sleep 6
+          done
+          echo "::error title=HTTPS not reachable::$API_URL did not come up. Check DNS, security group port 443, and 'docker logs paisa-caddy'."; exit 1
       - name: Smoke test public API (${{ env.API_URL }})
-        run: bash scripts/smoke-test.sh "$API_URL"
+        run: bash scripts/smoke-test.sh "$API_URL" "$ADMIN_URL"
       - name: Show server state on failure
         if: failure()
-        run: ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" 'docker ps -a; docker logs --tail 80 paisa-api 2>&1 || true'
+        run: ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" 'docker ps -a; docker logs --tail 80 paisa-api 2>&1 || true; docker logs --tail 40 paisa-caddy 2>&1 || true'
 
   # ── 4. Build the Android APK against the live API (parallel to image/deploy) ────────────────────
   apk:
