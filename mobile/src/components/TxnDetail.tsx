@@ -2,13 +2,13 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { CATEGORIES, formatINR, type Transaction } from '@upi/core';
+import { CATEGORIES, formatINR, type Transaction, PAYMENT_APP_NAMES } from '@upi/core';
 import { space, useTheme } from '../theme';
 import { bankOf } from '../data/banks';
 import { BankBadge } from './BankBadge';
 import { Button } from './ui';
 
-const APP = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', bank_app: 'Bank app', unknown: '—' } as const;
+const APP = { ...PAYMENT_APP_NAMES, unknown: '—' } as const;
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 
 /** Bottom sheet with everything we know about one transaction, including the original bank SMS. */

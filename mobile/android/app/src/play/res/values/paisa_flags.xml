@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Google Play build: never read the SMS app's notifications (Play SMS policy). Payment/bank-app notifications only. -->
+  <bool name="allow_messaging_notifications">false</bool>
+</resources>

@@ -2,13 +2,13 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { CATEGORIES, formatINR, type Transaction } from '@upi/core';
+import { CATEGORIES, formatINR, type Transaction, PAYMENT_APP_NAMES } from '@upi/core';
 import { useTheme } from '../theme';
 import { Pill, Tap } from './ui';
 import { bankOf } from '../data/banks';
 import { BankBadge } from './BankBadge';
 
-const APP_LABEL = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', bank_app: 'Bank app', unknown: 'Unknown app' } as const;
+const APP_LABEL = PAYMENT_APP_NAMES;
 
 export function describeTxn(t: Transaction) {
   if (t.kind === 'self_transfer') return 'Own-account transfer';

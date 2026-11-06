@@ -32,7 +32,7 @@ export function SyncCard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sms, check]);
 
-  const sync = async () => {
+  const sync = async (full = false) => {
     setBusy(true);
     try {
       if (SMS_ENABLED && !(await hasSmsPermission()) && !(await requestSmsPermission())) {
@@ -42,7 +42,7 @@ export function SyncCard() {
         return;
       }
       setBlocked(false);
-      const r = await syncDevice();
+      const r = await syncDevice(false, full);
       setMsg(r.message);
     } catch (e) {
       setMsg((e as Error).message);
@@ -63,10 +63,11 @@ export function SyncCard() {
     <Card style={{ gap: 12 }}>
       <Eyebrow>Live data from this phone</Eyebrow>
       {SMS_ENABLED && row(sms, 'Bank SMS', sms ? 'Reading debit/credit alerts. OTPs are ignored.' : 'Reads past + new debit/credit alerts from your banks.')}
-      {row(ntf, 'Payment-app notifications', ntf ? 'GPay, PhonePe, Paytm, BHIM payments are tagged by app.' : 'Tags each payment with the app you used (from now on).')}
+      {row(ntf, 'Payment & bank app alerts', ntf ? 'Payments from GPay, PhonePe, Paytm, CRED, Amazon Pay, bank apps and more are picked up and tagged.' : 'Picks up payments from GPay, PhonePe, Paytm, CRED, bank apps and more, and tags the app used.')}
       {!ntf && <Button title="Enable app tagging" variant="ghost" onPress={() => { setBlocked(true); openNotificationAccess(); }} />}
       {blocked && <Button title="Open app settings" variant="ghost" onPress={() => Linking.openSettings()} />}
-      <Button title={busy ? 'Syncing…' : sms || !SMS_ENABLED ? 'Sync now' : 'Allow SMS & sync'} disabled={busy} onPress={sync} />
+      <Button title={busy ? 'Syncing…' : sms || !SMS_ENABLED ? 'Sync now' : 'Allow SMS & sync'} disabled={busy} onPress={() => sync(false)} />
+      {(sms || !SMS_ENABLED) && <Button title="Rescan all messages" variant="ghost" disabled={busy} onPress={() => sync(true)} />}
       {!!msg && <Text style={{ color: colors.textMuted, fontSize: 12.5 }}>{msg}</Text>}
       <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>
         {lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'Not synced yet'}. Your messages aren’t uploaded — only the parsed transactions (amount, time, merchant) are backed up to your account. We can’t read other apps’ history pages — Android doesn’t allow it.

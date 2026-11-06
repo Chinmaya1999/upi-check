@@ -39,6 +39,18 @@ const APPS: Record<string, { name: string; short: string; bg: string }> = {
   phonepe: { name: 'PhonePe', short: 'Pe', bg: '#5F259F' },
   paytm: { name: 'Paytm', short: 'P', bg: '#00B9F1' },
   bhim: { name: 'BHIM', short: 'B', bg: '#F58220' },
+  amazonpay: { name: 'Amazon Pay', short: 'A', bg: '#FF9900' },
+  cred: { name: 'CRED', short: 'C', bg: '#1C1C1E' },
+  mobikwik: { name: 'MobiKwik', short: 'M', bg: '#2E6BE6' },
+  freecharge: { name: 'Freecharge', short: 'F', bg: '#F26A21' },
+  airtel: { name: 'Airtel Thanks', short: 'a', bg: '#E40000' },
+  jio: { name: 'Jio', short: 'J', bg: '#0A2885' },
+  slice: { name: 'slice', short: 's', bg: '#6B2FD6' },
+  navi: { name: 'Navi', short: 'N', bg: '#4C5BFF' },
+  jupiter: { name: 'Jupiter', short: 'J', bg: '#FF7A00' },
+  fi: { name: 'Fi', short: 'F', bg: '#00B8A9' },
+  payzapp: { name: 'PayZapp', short: 'P', bg: '#004C8F' },
+  bank_app: { name: 'Bank app', short: '₹', bg: '#475467' },
 };
 
 /** Which bank / wallet a transaction belongs to, derived from the SMS sender code stored in accountId. */

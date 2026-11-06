@@ -11,7 +11,9 @@ export type PaymentChannel = 'upi' | 'bank_transfer' | 'card' | 'cash' | 'other'
  * notification posted by the Google Pay package). Bank data alone never
  * tells us the app, so the default is 'unknown'. We do not guess.
  */
-export type PaymentApp = 'gpay' | 'phonepe' | 'paytm' | 'bhim' | 'bank_app' | 'unknown';
+export type PaymentApp =
+  | 'gpay' | 'phonepe' | 'paytm' | 'bhim' | 'amazonpay' | 'cred' | 'mobikwik' | 'freecharge' | 'airtel' | 'jio'
+  | 'slice' | 'navi' | 'jupiter' | 'fi' | 'payzapp' | 'bank_app' | 'unknown';
 
 /**
  * How a transaction participates in totals.

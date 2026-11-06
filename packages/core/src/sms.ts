@@ -69,28 +69,86 @@ export function parseBankSms(m: SmsMessage): RawTransaction | null {
   };
 }
 
+/**
+ * Payment, wallet and bank apps whose notifications Paisa understands (an allow-list: no other app is ever read).
+ * Several bank apps share the 'bank_app' tag; the exact bank still comes from the matching SMS when there is one.
+ */
 export const APP_PACKAGES: Record<string, PaymentApp> = {
+  // UPI & wallets
   'com.google.android.apps.nbu.paisa.user': 'gpay',
   'com.phonepe.app': 'phonepe',
   'net.one97.paytm': 'paytm',
   'in.org.npci.upiapp': 'bhim',
+  'in.amazon.mShop.android.shopping': 'amazonpay',
+  'com.dreamplug.androidapp': 'cred',
+  'com.mobikwik_new': 'mobikwik',
+  'com.freecharge.android': 'freecharge',
+  'com.myairtelapp': 'airtel',
+  'com.jio.myjio': 'jio',
+  'indwin.c3.shareapp': 'slice',
+  'com.naviapp': 'navi',
+  'money.jupiter': 'jupiter',
+  'com.epifi.paisa': 'fi',
+  'com.enstage.wibmo.hdfc': 'payzapp',
+  // Bank apps
+  'com.snapwork.hdfc': 'bank_app',
+  'com.sbi.lotusintouch': 'bank_app',
+  'com.sbi.SBIFreedomPlus': 'bank_app',
+  'com.csam.icici.bank.imobile': 'bank_app',
+  'com.icicibank.pockets': 'bank_app',
+  'com.axis.mobile': 'bank_app',
+  'com.msf.kbank.mobile': 'bank_app',
+  'com.bankofbaroda.mconnect': 'bank_app',
+  'com.canarabank.mobility': 'bank_app',
+  'com.idfcfirstbank.optimus': 'bank_app',
+  'com.yesbank': 'bank_app',
 };
 
-/** Parses a payment-app notification ("Paid ₹100 to X", "Received ₹500 from Y"). The app is known from the package. */
+/** Display names for every PaymentApp (labels in lists, receipts and the per-app summary). */
+export const PAYMENT_APP_NAMES: Record<PaymentApp, string> = {
+  gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', amazonpay: 'Amazon Pay', cred: 'CRED', mobikwik: 'MobiKwik',
+  freecharge: 'Freecharge', airtel: 'Airtel Thanks', jio: 'Jio', slice: 'slice', navi: 'Navi', jupiter: 'Jupiter', fi: 'Fi', payzapp: 'PayZapp',
+  bank_app: 'Bank app', unknown: 'Unknown app',
+};
+
+/** SMS apps. Only used (direct build) to catch bank messages that arrive as RCS / "verified SMS" and never reach the SMS inbox. */
+export const MESSAGING_PACKAGES = new Set([
+  'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.android.mms',
+]);
+
+// Payment-app wording varies a lot: "Paid ₹100 to X", "You've sent Rs 100 to X", "Payment of ₹100 to X successful",
+// "X sent you ₹100", "₹100 received from X", "Rs.100 debited from a/c XX1234".
+const SENT_YOU = /\b(?:sent|paid|transferred)\s+you\b/i;
+const PAID = /\b(?:paid|sent|payment of|transferred)\b/i;
+const RECEIVED = /\b(?:received|credited|refund(?:ed)?)\b/i;
+const DEBITED = /\bdebited\b/i;
+const NOT_PAYMENT_NOTE = /\b(pending|processing|scheduled|request(?:ed)?|reminder|will be|failed|declined|unsuccessful|couldn'?t|could not)\b/i;
+
+/** Parses a notification from a supported payment / bank app. The app is known from the package name. */
 export function parseAppNotification(n: AppNotification): RawTransaction | null {
   const app = APP_PACKAGES[n.pkg];
   if (!app) return null;
   const text = `${n.title} ${n.text}`.replace(/\s+/g, ' ').trim();
-  if (NOT_A_TXN.test(text) || /\b(pending|processing)\b/i.test(text)) return null;
+  if (NOT_A_TXN.test(text) || NOT_PAYMENT_NOTE.test(text)) return null;
   const amt = text.match(AMOUNT);
   if (!amt) return null;
+
   let direction: TxnDirection | null = null;
   let who: string | undefined;
-  const paid = text.match(/\b(?:paid|sent|payment of)\b.*?\bto\s+(.{2,40}?)(?:\s+(?:using|via|from|on|successful)|[.!]|$)/i);
-  const recv = text.match(/\b(?:received|credited)\b.*?\bfrom\s+(.{2,40}?)(?:\s+(?:using|via|on)|[.!]|$)/i);
-  if (paid && !/received/i.test(text.slice(0, paid.index! + 5))) { direction = 'debit'; who = paid[1]; }
-  else if (recv) { direction = 'credit'; who = recv[1]; }
+  const clean = (v?: string) => v?.replace(/[.!,]+$/, '').trim() || undefined;
+  const toName = text.match(/\bto\s+(.{2,40}?)(?:\s+(?:using|via|from|on|successful|successfully|at|ref)|[.!,(]|$)/i)?.[1];
+  const fromName = text.match(/\bfrom\s+(.{2,40}?)(?:\s+(?:using|via|on|at|ref|a\/c)|[.!,(]|$)/i)?.[1];
+
+  if (SENT_YOU.test(text)) {                      // "Rahul sent you ₹500"
+    direction = 'credit';
+    who = clean(n.text.replace(/\s+/g, ' ').trim().match(/^(.{2,40}?)\s+(?:has\s+)?(?:sent|paid|transferred)\s+you\b/i)?.[1]) ?? clean(fromName);
+  } else if (RECEIVED.test(text) && !/\b(?:paid|sent)\s+(?:₹|rs|inr)/i.test(text.slice(0, 14))) {
+    direction = 'credit'; who = clean(fromName);
+  } else if (PAID.test(text) || DEBITED.test(text)) {
+    direction = 'debit'; who = clean(toName);
+  }
   if (!direction) return null;
+  const name = who ?? (direction === 'debit' ? 'payment' : 'received');
   return {
     source: 'notification',
     sourceRecordId: `ntf:${n.id}`,
@@ -98,10 +156,22 @@ export function parseAppNotification(n: AppNotification): RawTransaction | null 
     amount: amt[1]!.replace(/,/g, ''),
     date: toIso(n.postedAt),
     direction,
-    narration: `UPI/${who!.trim()}`,
+    narration: `UPI/${name}`,
     paymentApp: app,
     original: n,
   };
+}
+
+const SENDER_ID = /^[A-Z]{2}-[A-Z0-9]{3,10}(?:-[A-Z])?$/;
+/**
+ * A bank message seen as a notification from the phone's SMS app (RCS / verified SMS never lands in the SMS inbox).
+ * Only strict sender IDs like "AX-AIRBNK-S" are accepted, so it yields the same account as the SMS reader and the
+ * engine de-duplicates by Txn ID. Chats with people and display names like "Airtel" are ignored.
+ */
+export function parseMessagingNotification(n: AppNotification): RawTransaction | null {
+  if (!MESSAGING_PACKAGES.has(n.pkg) || !SENDER_ID.test(n.title.trim())) return null;
+  const r = parseBankSms({ id: `n${n.id}`, address: n.title.trim(), body: n.text, date: n.postedAt });
+  return r ? { ...r, sourceRecordId: `sms:n${n.id}` } : null;
 }
 
 const WINDOW_MS = 20 * 60 * 1000;

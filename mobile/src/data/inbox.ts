@@ -1,6 +1,6 @@
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { SMS_ENABLED } from '../config';
-import { parseAppNotification, parseBankSms, type AppNotification, type RawTransaction, type SmsMessage } from '@upi/core';
+import { parseAppNotification, parseBankSms, parseMessagingNotification, type AppNotification, type RawTransaction, type SmsMessage } from '@upi/core';
 
 interface Native {
   readSms(sinceMs: number, limit: number): Promise<SmsMessage[]>;
@@ -61,7 +61,10 @@ export async function readInbox(sinceMs: number): Promise<InboxBatch> {
   const msgs = (await hasSmsPermission()) ? await native.readSms(sinceMs, 20000) : [];
   const sms = msgs.map(parseBankSms).filter((x): x is RawTransaction => !!x);
   const notifs = (await notificationAccessEnabled()) ? await native.drainNotifications() : [];
-  const notifications = notifs.map(parseAppNotification).filter((x): x is RawTransaction => !!x);
+  // Payment/bank apps, plus (direct build) bank messages that reached the SMS app as RCS and never hit the SMS inbox.
+  const notifications = notifs
+    .map((n) => parseAppNotification(n) ?? (SMS_ENABLED ? parseMessagingNotification(n) : null))
+    .filter((x): x is RawTransaction => !!x);
   return { sms, notifications, scannedSms: msgs.length, newestSmsAt: msgs.reduce((m, s) => Math.max(m, s.date), sinceMs) };
 }
 

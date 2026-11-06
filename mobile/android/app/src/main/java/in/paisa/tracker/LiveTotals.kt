@@ -61,10 +61,12 @@ object LiveTotals {
     val amt = AMOUNT.find(t) ?: return null
     val paid = Regex("""\b(?:paid|sent|payment of)\b.*?\bto\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)
     val recv = Regex("""\b(?:received|credited)\b.*?\bfrom\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)
+    val sentYou = Regex("""\b(?:sent|paid|transferred)\s+you\b""", RegexOption.IGNORE_CASE).containsMatchIn(t)
     val debit = when {
+      sentYou -> false
       paid && !Regex("received", RegexOption.IGNORE_CASE).containsMatchIn(t.take(12)) -> true
       recv -> false
-      else -> return null
+      else -> direction(t) ?: return null   // bank-app wording: "Rs 500 debited from a/c ..."
     }
     return Parsed(debit, paise(amt), null)
   }

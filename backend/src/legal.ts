@@ -13,7 +13,7 @@ export const privacyHtml = () => page('Privacy Policy', `
 <li><b>Account details</b>: your name, email address (verified with a one-time code), optional mobile number, optional profile photo, and a salted password hash. We never store your password.</li>
 <li><b>One-time codes</b>: sign-up, email-change and password-reset codes are emailed to you, stored only as a hash, and expire after 10 minutes.</li>
 <li><b>Transactions</b>: amount, date and time, direction (debit/credit), merchant or payee name, category, and the source (manual, payment-app notification). These are backed up to your account so you can restore them on a new phone.</li>
-<li><b>Payment-app notifications</b> (only if you enable Notification Access): the app reads payment notifications from Google Pay, PhonePe, Paytm and BHIM to detect payments and tag the app used. Only the parsed transaction is kept. Other notifications are ignored and not stored.</li>
+<li><b>Payment-app notifications</b> (only if you enable Notification Access): the app reads payment notifications from a fixed list of UPI, wallet and bank apps (for example Google Pay, PhonePe, Paytm, BHIM, CRED, Amazon Pay and bank apps) to detect payments and tag the app used. Only the parsed transaction is kept. Notifications from every other app are ignored and not stored.</li>
 <li><b>Bank SMS</b> (only in the directly distributed version, not on Google Play): messages are read on your device to extract debit/credit alerts. OTPs are ignored and message text is not uploaded.</li>
 </ul>
 <h2>What we do not do</h2>

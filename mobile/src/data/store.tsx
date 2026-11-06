@@ -31,7 +31,7 @@ interface StoreCtx {
   reset: () => Promise<void>;
   /** Pull new bank SMS + payment-app notifications from this device. */
   /** `auto` = background poll: skips all work (and UI churn) when nothing new has arrived. */
-  syncDevice: (auto?: boolean) => Promise<SyncResult>;
+  syncDevice: (auto?: boolean, full?: boolean) => Promise<SyncResult>;
   lastSync: number | null;
   /** Server backup state. */
   /** `offline`: the last backup failed because the server couldn't be reached (no internet). Local data keeps working. */
@@ -142,25 +142,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const syncing = useRef(false);
-  const syncDevice = useCallback<StoreCtx['syncDevice']>(async (auto = false) => {
+  /** Every sync also re-reads the last few days before the saved position, so an SMS that was written late, out of order
+   *  or with a skewed timestamp is never skipped for good. Messages already processed are remembered by id (`seenSms`),
+   *  so re-reading adds only what was missed and never brings back something the user deleted. */
+  const OVERLAP_MS = 3 * 86_400_000;
+  const SEEN_MAX = 8000;
+  const syncDevice = useCallback<StoreCtx['syncDevice']>(async (auto = false, full = false) => {
     if (syncing.current) return { added: 0, scannedSms: 0, message: 'Sync already running' };
     syncing.current = true;
     try {
       const at = new Date();
-      const since = Number((await db.getMeta('smsCursor')) ?? 0);
+      const cursor = Number((await db.getMeta('smsCursor')) ?? 0);
+      const seenRaw = await db.getMeta('seenSms');
+      const seenList: string[] = seenRaw ? JSON.parse(seenRaw) : [];
+      const seen = new Set(seenList);
+      // First run of this version: trust what is already stored (no overlap), then start remembering ids.
+      const since = full ? 0 : seenRaw === null ? cursor : Math.max(0, cursor - OVERLAP_MS);
       const batch = await readInbox(since);
-      if (auto && !batch.sms.length && !batch.notifications.length) {
-        if (batch.newestSmsAt > since) await db.setMeta('smsCursor', String(batch.newestSmsAt)); // skip past non-bank SMS
+      const newSms = batch.sms.filter((r) => !r.sourceRecordId || !seen.has(r.sourceRecordId));
+      const remember = async () => {
+        for (const r of newSms) if (r.sourceRecordId) seen.add(r.sourceRecordId);
+        await db.setMeta('seenSms', JSON.stringify([...seen].slice(-SEEN_MAX)));
+      };
+      if (auto && !newSms.length && !batch.notifications.length) {
+        if (batch.newestSmsAt > cursor) await db.setMeta('smsCursor', String(batch.newestSmsAt));
+        if (seenRaw === null) await remember();
         return { added: 0, scannedSms: batch.scannedSms, message: 'Nothing new.' };
       }
       // First real data replaces sample data so demo and real numbers are never mixed.
-      if ((await db.getMeta('demo')) === '1' && (batch.sms.length || batch.notifications.length)) {
+      if ((await db.getMeta('demo')) === '1' && (newSms.length || batch.notifications.length)) {
         await db.clearTxns();
         await db.setMeta('demo', '0');
       }
       const existing = await db.loadAll();
+      const known = new Set(existing.map((e) => e.id));
       const consents = [{ id: 'device', accountId: '*', sources: ['notification' as const], status: 'active' as const }];
-      const first = ingestBatch([...batch.sms, ...batch.notifications], { existing, consents, now: at });
+      const first = ingestBatch([...newSms, ...batch.notifications], { existing, consents, now: at });
       const all = [...existing.filter((e) => !first.store.some((s) => s.id === e.id)), ...first.store];
       const { update, remove } = attributeApps(all);
       await db.upsertMany([...first.store.filter((t) => !update.some((u) => u.id === t.id)), ...update]);
@@ -170,12 +187,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (dd.update.length) await db.upsertMany(dd.update);
       if (dd.remove.length) await db.deleteMany(dd.remove);
       remove.push(...dd.remove);
-      await db.setMeta('smsCursor', String(batch.newestSmsAt));
+      await remember();
+      await db.setMeta('smsCursor', String(Math.max(cursor, batch.newestSmsAt)));
       await db.setMeta('lastSync', String(Date.now()));
       await refresh();
       pushToServer(remove);
-      const added = batch.sms.length + batch.notifications.length;
-      return { added, scannedSms: batch.scannedSms, message: added ? `Read ${batch.scannedSms} SMS, found ${batch.sms.length} bank alerts${batch.notifications.length ? ` and ${batch.notifications.length} app notifications` : ''}.` : 'Nothing new.' };
+      const fresh = first.store.filter((t) => !known.has(t.id)).length;
+      return {
+        added: newSms.length + batch.notifications.length, scannedSms: batch.scannedSms,
+        message: `Read ${batch.scannedSms} SMS, found ${batch.sms.length} bank alerts${batch.notifications.length ? ` and ${batch.notifications.length} app notifications` : ''}. ${fresh ? `${fresh} new transaction${fresh > 1 ? 's' : ''} added.` : 'Everything is already up to date.'}`,
+      };
     } finally {
       syncing.current = false;
     }

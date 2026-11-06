@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatINR, summarizeDay, summarizeDayByApp, type PaymentApp } from '@upi/core';
+import { formatINR, summarizeDay, summarizeDayByApp, type PaymentApp, PAYMENT_APP_NAMES } from '@upi/core';
 import { useTheme, space } from '../theme';
 import { useStore } from '../data/store';
 import { Card, Tap } from '../components/ui';
 import { SyncCard } from '../components/SyncCard';
 import { AnalyticsHeader } from '../components/AnalyticsHeader';
 
-const APP_LABEL: Record<PaymentApp, string> = { gpay: 'Google Pay', phonepe: 'PhonePe', paytm: 'Paytm', bhim: 'BHIM', bank_app: 'Bank app', unknown: 'Bank / other' };
+const APP_LABEL: Record<PaymentApp, string> = { ...PAYMENT_APP_NAMES, unknown: 'Bank / other' };
 
 const dayLabel = (k: string) => new Date(`${k}T12:00:00+05:30`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
