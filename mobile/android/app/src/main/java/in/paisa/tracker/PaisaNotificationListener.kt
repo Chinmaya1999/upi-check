@@ -38,6 +38,24 @@ class PaisaNotificationListener : NotificationListenerService() {
       } catch (_: Exception) { }
       ex.getCharSequenceArray("android.textLines")?.forEach { l -> items.add(title to l.toString()) }
     }
+    // Truecaller's transaction card ("+ ₹10 / UPI transfer from X to Account 3804") keeps its text in separate extras and in a
+    // custom layout, so gather every string it carries and let the app's Truecaller parser make sense of it.
+    if (isTruecaller) {
+      try {
+        val all = LinkedHashSet<String>()
+        for (k in ex.keySet()) {
+          if (k == "android.title" || k.contains("icon", true) || k.contains("picture", true) || k.contains("template", true)) continue
+          when (val v = ex.get(k)) {
+            is CharSequence -> v.toString().trim().takeIf { it.isNotEmpty() }?.let { all.add(it) }
+            is Array<*> -> v.forEach { e -> (e as? CharSequence)?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let { all.add(it) } }
+          }
+        }
+        for (rv in listOfNotNull(sbn.notification.bigContentView, sbn.notification.contentView, sbn.notification.headsUpContentView)) {
+          try { collectText(rv.apply(applicationContext, android.widget.FrameLayout(this)), all) } catch (_: Throwable) { }
+        }
+        if (all.isNotEmpty()) items.add(title to all.joinToString(" | "))
+      } catch (_: Throwable) { }
+    }
     val sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     for ((t, body) in items) {
       if (t.isBlank() && body.isBlank()) continue
@@ -57,6 +75,11 @@ class PaisaNotificationListener : NotificationListenerService() {
         sp.edit().putString(KEY, trimmed.toString()).apply()
       }
     }
+  }
+
+  private fun collectText(v: android.view.View, out: MutableSet<String>) {
+    if (v is android.widget.TextView) v.text?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.let { out.add(it) }
+    if (v is android.view.ViewGroup) for (i in 0 until v.childCount) collectText(v.getChildAt(i), out)
   }
 
   companion object {

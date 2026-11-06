@@ -187,6 +187,38 @@ export function parseMessagingNotification(n: AppNotification): RawTransaction |
   return r ? { ...r, sourceRecordId: `sms:n${n.id}` } : null;
 }
 
+/**
+ * Truecaller's transaction card, e.g. title "Canara Bank", "+ ₹10", "UPI transfer from Chinmaya to Account 3804", "Account xx3804".
+ * The listener sends every string of the card joined with " | ". Anything that is not clearly a money movement is ignored.
+ */
+export function parseTruecallerCard(n: AppNotification): RawTransaction | null {
+  if (n.pkg !== TRUECALLER) return null;
+  const text = `${n.title} | ${n.text}`.replace(/\s+/g, ' ').trim();
+  if (NOT_A_TXN.test(text) || NOT_PAYMENT_NOTE.test(text)) return null;
+  const am = text.match(/([+\-−–])?\s*(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d{1,2})?)(?![\d,]*\s?(?:l|k|cr|lakh|lac|crore)\b)/i);
+  if (!am) return null;
+  const last4 = text.match(/\b(?:account|a\/c|acct?|card)\W{0,4}(?:no\.?\W{0,3})?(?:x+|\*+|\.+)?\s?(\d{3,4})\b/i)?.[1];
+  const sign = am[1];
+  let direction: TxnDirection | null = null;
+  if (sign === '+') direction = 'credit';
+  else if (sign) direction = 'debit';
+  else if (/\bto\s+(?:your\s+)?(?:a\/c|acct?|account)\b/i.test(text) || RECEIVED.test(text)) direction = 'credit';
+  else if (/\bfrom\s+(?:your\s+)?(?:a\/c|acct?|account)\b/i.test(text) || PAID.test(text) || DEBITED.test(text)) direction = 'debit';
+  if (!direction || !last4) return null;               // without an account we cannot tell whose money moved: leave it to the SMS
+  const bank = (text.match(/\b([A-Z][A-Za-z&]+(?:\s[A-Z][A-Za-z&]+)?\s(?:Bank|Payments Bank|Finance Bank))\b/)?.[1] ?? n.title).trim().toUpperCase();
+  const who = text.match(/\bfrom\s+(.{2,30}?)\s+to\b/i)?.[1] ?? text.match(/\bto\s+(.{2,30}?)(?:\s*[|.]|$)/i)?.[1];
+  return {
+    source: 'sms',
+    sourceRecordId: `tc:${n.id}`,
+    accountId: `${bank}:${last4}`,
+    amount: am[2]!.replace(/,/g, ''),
+    date: toIso(n.postedAt),
+    direction,
+    narration: `UPI/${who && !/account/i.test(who) ? who : direction === 'credit' ? 'received' : 'payment'}`,
+    original: n,
+  };
+}
+
 const WINDOW_MS = 20 * 60 * 1000;
 
 /**

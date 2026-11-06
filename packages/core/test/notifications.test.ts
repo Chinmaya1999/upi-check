@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_PACKAGES, ingestBatch, parseAppNotification, parseBankSms, parseMessagingNotification, summarizeDay } from '../src';
+import { APP_PACKAGES, ingestBatch, parseAppNotification, parseBankSms, parseMessagingNotification, parseTruecallerCard, summarizeDay } from '../src';
 
 const T = Date.parse('2026-11-06T18:10:00+05:30');
 const note = (pkg: string, title: string, text: string, id = 'n1') => parseAppNotification({ id, pkg, title, text, postedAt: T });
@@ -91,5 +91,15 @@ describe("a day of real Airtel Payments Bank SMS adds up to the bank's own figur
     expect(day.expensePaise).toBe(38182);
     expect(day.incomePaise).toBe(1000);
     expect(day.count).toBe(6);
+  });
+});
+
+describe('Truecaller transaction card', () => {
+  const card = (text: string) => parseTruecallerCard({ id: 'tc1', pkg: 'com.truecaller', title: 'Canara Bank', text, postedAt: T });
+  it('reads the card shown in the shade', () => {
+    expect(card('Canara Bank | + ₹10 | UPI transfer from Chinmaya to Account 3804 | Account xx3804')).toMatchObject({ direction: 'credit', amount: '10', accountId: 'CANARA BANK:3804' });
+    expect(card('₹10 | UPI transfer from Chinmaya to your account')).toBeNull();            // no account digits
+    expect(card('Canara Bank | - ₹250 | Paid to Zomato | Account xx3804')).toMatchObject({ direction: 'debit', amount: '250' });
+    expect(card('Missed call from Rahul')).toBeNull();
   });
 });
