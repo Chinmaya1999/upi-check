@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -22,6 +22,7 @@ import { AddTransactionModal } from './src/screens/AddTransactionModal';
 import { Button } from './src/components/ui';
 import { useStore } from './src/data/store';
 import { hasSmsPermission } from './src/data/inbox';
+import { SMS_ENABLED } from './src/config';
 import { AppState } from 'react-native';
 
 const Tab = createBottomTabNavigator();
@@ -32,7 +33,7 @@ function Main({ profile, setProfile, signOut }: { profile: Profile; setProfile: 
   const { syncDevice } = useStore();
   // Quietly pull new SMS/notifications on launch and whenever the app returns to the foreground.
   useEffect(() => {
-    const run = () => { hasSmsPermission().then((ok) => { if (ok) return syncDevice(); }).catch(() => {}); };
+    const run = () => { hasSmsPermission().then((ok) => { if (ok || !SMS_ENABLED) return syncDevice(); }).catch(() => {}); };
     run();
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') run(); });
     return () => sub.remove();
@@ -82,6 +83,15 @@ function Root() {
     (async () => { const p = await loadProfile(); setNeedsLogin(!!p && !(await getToken())); setProfile(p); })();
   }, []);
   const done = useCallback(() => setSplash(false), []);
+  // Re-lock when the app has been in the background for more than 30 seconds.
+  const leftAt = useRef(0);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'background') leftAt.current = Date.now();
+      else if (st === 'active' && leftAt.current && Date.now() - leftAt.current > 30_000) { setLocked(true); leftAt.current = 0; }
+    });
+    return () => sub.remove();
+  }, []);
 
   let body: React.ReactNode;
   if (splash || profile === undefined) body = <SplashScreen onDone={done} />;

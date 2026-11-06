@@ -68,6 +68,20 @@ class PaisaInboxModule(private val ctx: ReactApplicationContext) : ReactContextB
   @ReactMethod
   fun isLockScreenCardEnabled(promise: Promise) { promise.resolve(LiveNotification.enabled(ctx)) }
 
+  /** FLAG_SECURE: blocks screenshots / screen recording and blanks the recent-apps thumbnail. */
+  @ReactMethod
+  fun setSecureScreen(enabled: Boolean) {
+    ctx.getSharedPreferences(PaisaWidgetProvider.PREFS, Context.MODE_PRIVATE).edit().putBoolean("secureScreen", enabled).apply()
+    val a = ctx.currentActivity ?: return
+    a.runOnUiThread {
+      if (enabled) a.window.setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE, android.view.WindowManager.LayoutParams.FLAG_SECURE)
+      else a.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
+  }
+
+  @ReactMethod
+  fun isSecureScreen(promise: Promise) { promise.resolve(ctx.getSharedPreferences(PaisaWidgetProvider.PREFS, Context.MODE_PRIVATE).getBoolean("secureScreen", true)) }
+
   /** A coloured notification when a payment is detected (bank SMS / UPI app). */
   @ReactMethod
   fun setPaymentNotifications(enabled: Boolean) { LiveNotification.setTxnEnabled(ctx, enabled) }

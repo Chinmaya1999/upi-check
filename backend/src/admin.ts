@@ -110,6 +110,7 @@ export function createAdmin(ctx: Ctx) {
     const activeSessions = one<{ n: number }>('SELECT COUNT(*) n FROM sessions WHERE expires_at > ?', now).n;
     const dbPages = one<{ page_count: number; page_size: number }>(`SELECT (SELECT page_count FROM pragma_page_count) page_count, (SELECT page_size FROM pragma_page_size) page_size`);
     return {
+      feedbackNew: one<{ n: number }>("SELECT COUNT(*) n FROM feedback WHERE status = 'new'").n,
       users: { total: users.total, active: users.active ?? 0, suspended: users.suspended ?? 0, last7d: users.d7 ?? 0, last30d: users.d30 ?? 0 },
       transactions: { total: t.total, debitPaise: t.debit ?? 0, creditPaise: t.credit ?? 0, needsReview: t.review ?? 0 },
       activeSessions,
@@ -252,6 +253,7 @@ export function createAdmin(ctx: Ctx) {
         const clash = db.prepare('SELECT id FROM users WHERE contact = ? AND id != ?').get(contact, id);
         if (clash) throw new HttpError(409, 'Another account already uses that contact');
         db.prepare('UPDATE users SET name = ?, contact = ? WHERE id = ?').run(name, contact, id);
+        if (contact !== u.contact) db.prepare(contact.includes('@') ? 'UPDATE users SET email = ?, email_verified = 1 WHERE id = ?' : 'UPDATE users SET phone = ? WHERE id = ?').run(contact, id);
         audit('user.edit', id, { from: { name: u.name, contact: u.contact }, to: { name, contact } }, ip);
         return send(res, 200, { user: userRow(id) });
       }
@@ -300,6 +302,35 @@ export function createAdmin(ctx: Ctx) {
       const n = Number(db.prepare('DELETE FROM txns WHERE user_id = ? AND id = ?').run(tm[1]!, decodeURIComponent(tm[2]!)).changes);
       if (!n) throw new HttpError(404, 'Transaction not found');
       audit('txn.delete', tm[1]!, { id: decodeURIComponent(tm[2]!) }, ip);
+      return send(res, 200, { ok: true });
+    }
+
+    if (method === 'GET' && path === '/feedback') {
+      const status = p.get('status'), category = p.get('category');
+      const limitN = int(p.get('limit'), 25, 1, 100), offset = int(p.get('offset'), 0, 0, 1e9);
+      const where: string[] = [], args: any[] = [];
+      if (status && ['new', 'read', 'done'].includes(status)) { where.push('f.status = ?'); args.push(status); }
+      if (category && ['idea', 'bug', 'praise', 'other'].includes(category)) { where.push('f.category = ?'); args.push(category); }
+      const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
+      const total = (db.prepare(`SELECT COUNT(*) n FROM feedback f ${w}`).get(...args) as { n: number }).n;
+      const rows = db.prepare(`SELECT f.id, f.category, f.rating, f.message, f.app_version, f.device, f.status, f.created_at, u.id user_id, u.name, u.contact
+        FROM feedback f JOIN users u ON u.id = f.user_id ${w} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`).all(...args, limitN, offset);
+      const avg = (db.prepare('SELECT AVG(rating) a, COUNT(rating) n FROM feedback WHERE rating IS NOT NULL').get() as { a: number | null; n: number });
+      const unread = (db.prepare("SELECT COUNT(*) n FROM feedback WHERE status = 'new'").get() as { n: number }).n;
+      return send(res, 200, { total, feedback: rows, unread, avgRating: avg.a, ratings: avg.n });
+    }
+    const fm = /^\/feedback\/(\d{1,12})$/.exec(path);
+    if (fm && method === 'PATCH') {
+      const st = String((await readJson(req)).status ?? '');
+      if (!['new', 'read', 'done'].includes(st)) throw new HttpError(400, 'Invalid status');
+      const n = Number(db.prepare('UPDATE feedback SET status = ? WHERE id = ?').run(st, Number(fm[1])).changes);
+      if (!n) throw new HttpError(404, 'Feedback not found');
+      return send(res, 200, { ok: true });
+    }
+    if (fm && method === 'DELETE') {
+      const n = Number(db.prepare('DELETE FROM feedback WHERE id = ?').run(Number(fm[1])).changes);
+      if (!n) throw new HttpError(404, 'Feedback not found');
+      audit('feedback.delete', fm[1]!, null, ip);
       return send(res, 200, { ok: true });
     }
 

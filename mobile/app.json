@@ -2,7 +2,7 @@
   "expo": {
     "name": "Paisa",
     "slug": "paisa-upi-tracker",
-    "version": "0.1.0",
+    "version": "0.6.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#070B16",
@@ -14,8 +14,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "USE_BIOMETRIC",
-        "READ_SMS"
+        "USE_BIOMETRIC"
       ]
     },
     "plugins": [

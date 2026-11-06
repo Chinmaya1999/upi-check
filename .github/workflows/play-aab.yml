@@ -1,0 +1,39 @@
+name: Play Store AAB
+
+# Manual: builds the signed Google Play bundle (no SMS permissions). Upload the artifact in Play Console.
+# Secrets needed: PLAY_UPLOAD_KEYSTORE_B64 (base64 of the .jks), PLAY_UPLOAD_STORE_PASSWORD, PLAY_UPLOAD_KEY_ALIAS, PLAY_UPLOAD_KEY_PASSWORD
+on:
+  workflow_dispatch:
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: mobile/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+        working-directory: mobile
+      - name: Decode upload keystore
+        run: echo "${{ secrets.PLAY_UPLOAD_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+      - name: Build AAB
+        working-directory: mobile/android
+        env:
+          EXPO_PUBLIC_API_URL: https://api.paisaduniya.in
+          EXPO_PUBLIC_SMS: "0"
+          PAISA_UPLOAD_STORE_FILE: ${{ runner.temp }}/upload.jks
+          PAISA_UPLOAD_STORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_STORE_PASSWORD }}
+          PAISA_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          PAISA_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundlePlayRelease --no-daemon --console=plain \
+            -PversionCode=$((4000 + ${{ github.run_number }})) -PversionName=1.0.${{ github.run_number }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Paisa-play-aab-${{ github.run_number }}
+          path: mobile/android/app/build/outputs/bundle/playRelease/app-play-release.aab

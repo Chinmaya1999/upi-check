@@ -154,10 +154,13 @@ jobs:
       - name: Write admin dashboard password to server
         env:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
         run: |
           # Lives only in ~/paisa/.env (mode 600), read by docker compose. Unset secret = dashboard stays disabled.
           if [ -z "$ADMIN_PASSWORD" ]; then echo "::warning title=ADMIN_PASSWORD secret not set::Admin dashboard will be disabled"; fi
-          printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD" | ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" \
+          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then echo "::warning title=SMTP secrets not set::Sign-up and password-reset emails cannot be sent"; fi
+          printf 'ADMIN_PASSWORD=%s\nSMTP_USER=%s\nSMTP_PASS=%s\n' "$ADMIN_PASSWORD" "$SMTP_USER" "$SMTP_PASS" | ssh -i ~/.ssh/deploy.pem "$SERVER_USER@$SERVER_HOST" \
             "umask 077 && cat > ~/paisa/.env"
       - name: Deploy ${{ github.sha }}
         env:
@@ -216,12 +219,12 @@ jobs:
           EXPO_PUBLIC_API_URL: ${{ env.API_URL }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --console=plain \
+          ./gradlew assembleDirectRelease --no-daemon --console=plain \
             -PversionCode=$((3200 + ${{ github.run_number }})) -PversionName=0.6.${{ github.run_number }} \
             -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a' }} \
             --build-cache --parallel
       - name: Name the artifact
-        run: cp mobile/android/app/build/outputs/apk/release/app-release.apk Paisa-build-${{ github.run_number }}.apk
+        run: cp mobile/android/app/build/outputs/apk/direct/release/app-direct-release.apk Paisa-build-${{ github.run_number }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Paisa-apk-${{ github.run_number }}

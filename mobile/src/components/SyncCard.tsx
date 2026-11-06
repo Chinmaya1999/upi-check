@@ -3,6 +3,7 @@ import { AppState, Linking, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { useStore } from '../data/store';
+import { SMS_ENABLED } from '../config';
 import { hasSmsPermission, inboxAvailable, notificationAccessEnabled, openNotificationAccess, requestSmsPermission } from '../data/inbox';
 import { Button, Card, Eyebrow } from './ui';
 
@@ -34,7 +35,7 @@ export function SyncCard() {
   const sync = async () => {
     setBusy(true);
     try {
-      if (!(await hasSmsPermission()) && !(await requestSmsPermission())) {
+      if (SMS_ENABLED && !(await hasSmsPermission()) && !(await requestSmsPermission())) {
         // Sideloaded APKs get "restricted settings": Android silently denies SMS/notification access until allowed in App info.
         setBlocked(true);
         setMsg('Android blocked SMS access for this installed app. Open App info → ⋮ (top right) → “Allow restricted settings”, then Permissions → SMS → Allow, and come back.');
@@ -61,14 +62,14 @@ export function SyncCard() {
   return (
     <Card style={{ gap: 12 }}>
       <Eyebrow>Live data from this phone</Eyebrow>
-      {row(sms, 'Bank SMS', sms ? 'Reading debit/credit alerts. OTPs are ignored.' : 'Reads past + new debit/credit alerts from your banks.')}
+      {SMS_ENABLED && row(sms, 'Bank SMS', sms ? 'Reading debit/credit alerts. OTPs are ignored.' : 'Reads past + new debit/credit alerts from your banks.')}
       {row(ntf, 'Payment-app notifications', ntf ? 'GPay, PhonePe, Paytm, BHIM payments are tagged by app.' : 'Tags each payment with the app you used (from now on).')}
       {!ntf && <Button title="Enable app tagging" variant="ghost" onPress={() => { setBlocked(true); openNotificationAccess(); }} />}
       {blocked && <Button title="Open app settings" variant="ghost" onPress={() => Linking.openSettings()} />}
-      <Button title={busy ? 'Syncing…' : sms ? 'Sync now' : 'Allow SMS & sync'} disabled={busy} onPress={sync} />
+      <Button title={busy ? 'Syncing…' : sms || !SMS_ENABLED ? 'Sync now' : 'Allow SMS & sync'} disabled={busy} onPress={sync} />
       {!!msg && <Text style={{ color: colors.textMuted, fontSize: 12.5 }}>{msg}</Text>}
       <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>
-        {lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'Not synced yet'}. Your inbox isn’t uploaded — only the parsed transactions (amount, time, merchant) are backed up to your account. We can’t read other apps’ history pages — Android doesn’t allow it.
+        {lastSync ? `Last sync ${new Date(lastSync).toLocaleString()}` : 'Not synced yet'}. Your messages aren’t uploaded — only the parsed transactions (amount, time, merchant) are backed up to your account. We can’t read other apps’ history pages — Android doesn’t allow it.
       </Text>
     </Card>
   );

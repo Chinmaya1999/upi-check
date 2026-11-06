@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-  <!-- HTTPS only: the API (https://api.paisaduniya.in) is served with a Let's Encrypt certificate. -->
-  <base-config cleartextTrafficPermitted="false" />
+  <!-- HTTPS only; user-installed CAs are NOT trusted (default for targetSdk 24+), so a "proxy" certificate installed on the phone cannot read traffic. -->
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors><certificates src="system" /></trust-anchors>
+  </base-config>
+  <!-- Pin the CA ROOTS (not the leaf), so routine certificate renewals never break the app.
+       Let's Encrypt: ISRG Root X1 + X2.  ZeroSSL (Caddy's automatic fallback CA): USERTrust RSA + ECC.
+       The pin-set stops being enforced after the expiration date (fail-open) so a forgotten update can never lock users out;
+       refresh the date (and re-verify hashes with openssl) each release. -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">api.paisaduniya.in</domain>
+    <pin-set expiration="2027-11-01">
+      <pin digest="SHA-256">C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=</pin>
+      <pin digest="SHA-256">diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=</pin>
+      <pin digest="SHA-256">x4QzPSC810K5/cMjb05Qm4k3Bw5zBn4lTdO/nEW/Td4=</pin>
+      <pin digest="SHA-256">ICGRfpgmOUXIWcQ/HXPLQTkFPEFPoDyjvH7ohhQpjzs=</pin>
+    </pin-set>
+  </domain-config>
 </network-security-config>

@@ -4,7 +4,16 @@ services:
     container_name: paisa-api
     restart: unless-stopped
     environment:
+      SMTP_USER: ${SMTP_USER:-}                    # Gmail sender for OTP emails (from ~/paisa/.env)
+      SMTP_PASS: ${SMTP_PASS:-}                    # Gmail app password
+      MAIL_FROM_NAME: Paisa
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}          # from ~/paisa/.env (written by CI); empty = admin dashboard disabled
+    read_only: true                                # container filesystem is immutable; only /data and /backups are writable
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 200
+    mem_limit: 512m
     ports:
       - "127.0.0.1:3000:3000"                      # host-local only (deploy health check); the public side is Caddy
     volumes:

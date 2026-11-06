@@ -30,13 +30,30 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
   } finally { clearTimeout(timer); }
 }
 
-export interface AuthResult { token: string; user: { id: string; name: string; contact: string } }
+export interface AuthUser { id: string; name: string; contact: string; email: string | null; phone: string | null; emailVerified: boolean; avatar: string | null }
+export interface AuthResult { token: string; user: AuthUser }
+export interface OtpSent { ok: true; email: string; expiresInSec: number }
 
-export const register = (name: string, contact: string, password: string) => call<AuthResult>('POST', '/auth/register', { name, contact, password }, false);
+// Sign-up: details + emailed code → account is only created when the code is verified.
+export const registerStart = (name: string, email: string, phone: string, password: string) => call<OtpSent>('POST', '/auth/register/start', { name, email, phone: phone || undefined, password }, false);
+export const registerResend = (email: string) => call<OtpSent>('POST', '/auth/register/resend', { email }, false);
+export const registerVerify = (email: string, otp: string) => call<AuthResult>('POST', '/auth/register/verify', { email, otp }, false);
 export const login = (contact: string, password: string) => call<AuthResult>('POST', '/auth/login', { contact, password }, false);
+export const forgotPassword = (email: string) => call<OtpSent>('POST', '/auth/forgot', { email }, false);
+export const resetPassword = (email: string, otp: string, password: string) => call<{ ok: true }>('POST', '/auth/reset', { email, otp, password }, false);
+export const sendFeedback = (f: { category: string; rating: number | null; message: string; appVersion: string; device: string }) => call<{ ok: true }>('POST', '/feedback', f);
+export const logoutAll = () => call<{ ok: true }>('POST', '/me/logout-all');
 export const logout = () => call<{ ok: true }>('POST', '/auth/logout');
 export const deleteAccount = () => call<{ ok: true }>('DELETE', '/me');
-export const me = () => call<{ user: AuthResult['user']; transactionCount: number }>('GET', '/me');
+export const me = () => call<{ user: AuthUser; transactionCount: number }>('GET', '/me');
+
+// Profile
+export const updateProfile = (patch: { name?: string; phone?: string }) => call<{ user: AuthUser }>('PATCH', '/me', patch);
+export const changeEmailStart = (email: string) => call<OtpSent>('POST', '/me/email/start', { email });
+export const changeEmailVerify = (otp: string) => call<{ user: AuthUser }>('POST', '/me/email/verify', { otp });
+export const changePassword = (current: string, next: string) => call<{ ok: true }>('POST', '/me/password', { current, next });
+export const setAvatar = (image: string) => call<{ user: AuthUser }>('PUT', '/me/avatar', { image });
+export const removeAvatar = () => call<{ user: AuthUser }>('DELETE', '/me/avatar');
 
 const CHUNK = 500;
 /** Raw SMS / notification text stays on the phone: keep the audit trail (source, time) but drop the payload. */

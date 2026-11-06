@@ -98,6 +98,12 @@ android {
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
+    // Two distributions: `direct` (sideloaded APK, reads bank SMS) and `play` (Google Play AAB, no SMS permissions).
+    flavorDimensions 'dist'
+    productFlavors {
+        direct { dimension 'dist' }
+        play   { dimension 'dist' }
+    }
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -106,14 +112,30 @@ android {
             keyPassword 'android'
         }
     }
+    // Play upload key: from env (CI) or ~/paisa-release-keys/keystore.properties (local). Never committed.
+    def uploadProps = new Properties()
+    def uploadPropsFile = new File(System.getenv('PAISA_KEYSTORE_PROPS') ?: "${System.getProperty('user.home')}/paisa-release-keys/keystore.properties")
+    if (uploadPropsFile.exists()) uploadPropsFile.withInputStream { uploadProps.load(it) }
+    def upStore = System.getenv('PAISA_UPLOAD_STORE_FILE') ?: uploadProps['storeFile']
+    if (upStore) {
+        signingConfigs {
+            upload {
+                storeFile file(upStore)
+                storePassword System.getenv('PAISA_UPLOAD_STORE_PASSWORD') ?: uploadProps['storePassword']
+                keyAlias System.getenv('PAISA_UPLOAD_KEY_ALIAS') ?: uploadProps['keyAlias']
+                keyPassword System.getenv('PAISA_UPLOAD_KEY_PASSWORD') ?: uploadProps['keyPassword']
+            }
+        }
+    }
+    def isPlayTask = gradle.startParameter.taskNames.any { it.toLowerCase().contains('play') }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // `direct` stays on the debug key so it keeps installing over existing sideloaded builds;
+            // `play` is overridden above with the upload key.
+            signingConfig(isPlayTask && signingConfigs.findByName('upload') ? signingConfigs.upload : signingConfigs.debug)
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

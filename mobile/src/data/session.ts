@@ -5,7 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
  * Phase 1 session is DEVICE-LOCAL: a profile in the secure keystore, no server,
  * no password. Phase 2 swaps this for the NestJS /auth endpoints behind the same shape.
  */
-export interface Profile { name: string; contact: string; biometricLock: boolean; createdAt: string }
+export interface Profile { name: string; contact: string; email?: string | null; phone?: string | null; biometricLock: boolean; createdAt: string }
 const KEY = 'paisa.profile.v1';
 
 export async function loadProfile(): Promise<Profile | null> {
@@ -28,3 +28,10 @@ export function validateContact(v: string): string | null {
   if (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s)) return null;
   return 'Enter a valid 10-digit mobile number or email';
 }
+
+export const validateEmail = (v: string): string | null =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? null : 'Enter a valid email address';
+export const validatePhoneOptional = (v: string): string | null => {
+  const s = v.replace(/[\s-]/g, '').replace(/^(\+?91)(?=\d{10}$)/, '');
+  return !s || /^[6-9]\d{9}$/.test(s) ? null : 'Enter a valid 10-digit mobile number, or leave it empty';
+};

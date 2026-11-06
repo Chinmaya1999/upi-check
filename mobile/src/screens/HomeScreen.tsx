@@ -1,3 +1,4 @@
+import { Avatar } from '../components/Avatar';
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,9 +50,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
           <Tap onPress={onAdd} label="Add transaction" style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="add" size={24} color={colors.text} />
           </Tap>
-          <View accessibilityLabel="Profile avatar" style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: colors.onBrand, fontWeight: '800', fontSize: 17 }}>{profile.name[0]?.toUpperCase()}</Text>
-          </View>
+          <Avatar name={profile.name} size={42} />
         </View>
       </View>
 

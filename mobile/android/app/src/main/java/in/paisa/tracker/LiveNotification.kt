@@ -26,7 +26,7 @@ object LiveNotification {
   private fun prefs(c: Context) = c.getSharedPreferences(PaisaWidgetProvider.PREFS, Context.MODE_PRIVATE)
   private fun nm(c: Context) = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-  fun enabled(context: Context) = prefs(context).getBoolean("lockEnabled", true)
+  fun enabled(context: Context) = prefs(context).getBoolean("lockEnabled", false)
   fun setEnabled(context: Context, on: Boolean) { prefs(context).edit().putBoolean("lockEnabled", on).apply(); update(context) }
 
   fun txnEnabled(context: Context) = prefs(context).getBoolean("txnNotify", true)
@@ -43,7 +43,8 @@ object LiveNotification {
     if (m.getNotificationChannel(id) != null) return
     val c = NotificationChannel(id, name, importance)
     c.description = desc
-    c.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    // Only the opt-in lock-screen card shows amounts on a locked phone; everything else hides its contents.
+    c.lockscreenVisibility = if (id == CHANNEL_CARD) Notification.VISIBILITY_PUBLIC else Notification.VISIBILITY_PRIVATE
     if (importance <= NotificationManager.IMPORTANCE_LOW) { c.setShowBadge(false); c.setSound(null, null) }
     m.createNotificationChannel(c)
   }
@@ -59,12 +60,12 @@ object LiveNotification {
   }
   private fun withoutEmoji(s: String) = s.replace(Regex("^[^\\p{L}\\p{N}₹]+"), "").trim()
 
-  private fun base(context: Context, channel: String, accent: String): NotificationCompat.Builder =
+  private fun base(context: Context, channel: String, accent: String, publicOnLock: Boolean = false): NotificationCompat.Builder =
     NotificationCompat.Builder(context, channel)
       .setSmallIcon(R.drawable.ic_stat_paisa)
       .setColor(Color.parseColor(accent))
       .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-      .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+      .setVisibility(if (publicOnLock) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
       .setContentIntent(openApp(context, channel.hashCode()))
 
   private fun post(context: Context, id: Int, n: Notification) {
@@ -96,7 +97,7 @@ object LiveNotification {
         else -> "Set a budget in Paisa to track what's left"
       })
     }
-    val n = base(context, CHANNEL_CARD, "#12B886")
+    val n = base(context, CHANNEL_CARD, "#12B886", publicOnLock = true)
       .setContentTitle("Spent today ${r(s.spent)}").setContentText("Received ${r(s.credit)} · This month ${r(s.month)}")
       .setCustomContentView(small).setCustomBigContentView(big)
       .setOngoing(true).setOnlyAlertOnce(true).setSilent(true).setShowWhen(true).setWhen(s.savedAt)
@@ -128,7 +129,7 @@ object LiveNotification {
       val c = NotificationChannel(channel, if (sound) "Budget alerts" else "Budget alerts (silent)", NotificationManager.IMPORTANCE_HIGH)
       c.description = "Warns you when spending crosses a daily, weekly or monthly budget"
       c.enableVibration(true)
-      c.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      c.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
       if (sound) {
         c.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
           android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build())

@@ -210,6 +210,7 @@ const openDlg = (...nodes) => { $('#dlgBody').replaceChildren(...nodes); const d
 
 // ───────── icons (static trusted paths, built with createElementNS) ─────────
 const ICONS = {
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   grid: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
   list: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01',
@@ -274,13 +275,13 @@ function showLogin() {
 // ───────── shell: sidebar + top bar ─────────
 const NAV = [
   ['Dashboard', [['overview', 'Overview', 'grid', 'Live numbers across your whole app']]],
-  ['People', [['users', 'Users', 'users', 'Accounts, passwords and access'], ['sessions', 'Devices', 'phone', 'Every signed-in device. Sign any of them out']]],
+  ['People', [['users', 'Users', 'users', 'Accounts, passwords and access'], ['sessions', 'Devices', 'phone', 'Every signed-in device. Sign any of them out'], ['feedback', 'Feedback', 'chat', 'What users write from the app: ideas, bugs and praise']]],
   ['Money', [['transactions', 'Transactions', 'list', 'Every synced transaction, searchable']]],
   ['App', [['design', 'App design', 'palette', 'Switch the look of every phone, live'], ['controls', 'App controls', 'sliders', 'Feature switches, maintenance and messages']]],
   ['System', [['audit', 'Audit log', 'check', 'Every admin action, recorded']]],
 ];
 const PAGES = Object.fromEntries(NAV.flatMap(([, items]) => items.map(([k, label, ic, sub]) => [k, { label, ic, sub }])));
-const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, design: viewDesign, controls: viewControls, audit: viewAudit };
+const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, feedback: viewFeedback, design: viewDesign, controls: viewControls, audit: viewAudit };
 let tab = 'overview';
 let pendingSearch = '';
 let statusTimer;
@@ -298,7 +299,7 @@ function boot() {
   const side = h('aside', { class: 'sidebar', 'aria-label': 'Main menu' },
     h('div', { class: 'brand' }, h('div', { class: 'logo' }, '₹'), h('div', {}, h('b', {}, 'Paisa'), h('small', {}, 'Admin console'))),
     NAV.map(([group, items]) => [h('div', { class: 'navgroup' }, group), items.map(([k, label, ic]) =>
-      h('button', { class: 'navitem' + (k === tab ? ' on' : ''), 'data-tab': k, onclick: () => go(k) }, icon(ic), label, k === 'users' ? h('span', { class: 'badge', id: 'badgeUsers', hidden: true }) : null))]),
+      h('button', { class: 'navitem' + (k === tab ? ' on' : ''), 'data-tab': k, onclick: () => go(k) }, icon(ic), label, k === 'users' ? h('span', { class: 'badge', id: 'badgeUsers', hidden: true }) : k === 'feedback' ? h('span', { class: 'badge', id: 'badgeFeedback', hidden: true, style: 'background:#F59E0B;color:#1a1100' }) : null))]),
     h('div', { class: 'sidefoot' },
       h('div', { class: 'statusbox' }, h('span', { class: 'dot', id: 'statusDot' }), h('div', {}, h('b', { id: 'statusText', style: 'display:block;color:#fff' }, 'Checking…'), h('small', { id: 'statusSub', style: 'color:var(--side-muted)' }, ''))),
       h('button', { class: 'navitem', onclick: async () => { await act(() => api('POST', '/logout')); clearInterval(statusTimer); showLogin(); } }, icon('logout'), 'Sign out')));
@@ -326,6 +327,7 @@ async function refreshStatus() {
     $('#statusText').textContent = s.config.maintenanceMode ? 'Maintenance mode' : 'All systems normal';
     $('#statusSub').textContent = 'Up ' + dur(s.server.uptimeSec) + ' · ' + bytes(s.server.dbBytes);
     const b = $('#badgeUsers'); if (b) { b.textContent = num(s.users.total); b.hidden = false; }
+    const fb = $('#badgeFeedback'); if (fb) { fb.textContent = num(s.feedbackNew); fb.hidden = !s.feedbackNew; }
   } catch { /* the sidebar footer is cosmetic */ }
 }
 
@@ -542,6 +544,42 @@ async function viewTransactions(main) {
       h('input', { type: 'date', 'aria-label': 'From', onchange: (e) => { st.from = e.target.value; st.offset = 0; load(); } }),
       h('input', { type: 'date', 'aria-label': 'To', onchange: (e) => { st.to = e.target.value; st.offset = 0; load(); } })),
     out);
+  await load();
+}
+
+// ───────── feedback ─────────
+const FB_CAT = { idea: ['💡 Idea', 'brand'], bug: ['🐞 Bug', 'bad'], praise: ['❤️ Praise', 'ok'], other: ['💬 Other', 'gray'] };
+async function viewFeedback(main) {
+  const st = { status: '', category: '', offset: 0, limit: 20 };
+  const head = h('div', { class: 'row' });
+  const list = h('div', { style: 'display:grid;gap:14px' });
+  const stars = (n) => n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '';
+  const load = async () => {
+    const r = await api('GET', '/feedback?' + qs(st));
+    head.replaceChildren(h('h2', { style: 'margin:0' }, 'User feedback'),
+      h('span', { class: 'muted' }, num(r.total) + ' shown · ' + num(r.unread) + ' new' + (r.ratings ? ' · average ' + r.avgRating.toFixed(1) + ' ★ from ' + num(r.ratings) + ' ratings' : '')),
+      h('span', { class: 'grow' }),
+      h('select', { 'aria-label': 'Category', onchange: (e) => { st.category = e.target.value; st.offset = 0; load(); } },
+        h('option', { value: '' }, 'All types'), ...Object.entries(FB_CAT).map(([k, v]) => h('option', { value: k, selected: st.category === k }, v[0]))),
+      h('select', { 'aria-label': 'Status', onchange: (e) => { st.status = e.target.value; st.offset = 0; load(); } },
+        ...[['', 'All'], ['new', 'New'], ['read', 'Read'], ['done', 'Done']].map(([v, l]) => h('option', { value: v, selected: st.status === v }, l))));
+    const setStatus = async (f, v) => { await act(() => api('PATCH', '/feedback/' + f.id, { status: v })); load(); refreshStatus(); };
+    list.replaceChildren(...(r.feedback.length ? r.feedback.map((f) => h('div', { class: 'card', style: 'display:grid;gap:10px' + (f.status === 'new' ? ';border-left:4px solid #F59E0B' : '') },
+      h('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, pill(FB_CAT[f.category][0], FB_CAT[f.category][1]),
+        f.rating ? h('span', { style: 'color:#F59E0B;letter-spacing:2px', title: f.rating + ' of 5' }, stars(f.rating)) : null,
+        pill(f.status, f.status === 'new' ? 'brand' : f.status === 'done' ? 'ok' : 'gray'), h('span', { class: 'grow' }), h('span', { class: 'muted' }, when(f.created_at))),
+      h('div', { style: 'white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.55' }, f.message),
+      h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap' },
+        h('a', { href: '#', onclick: (e) => { e.preventDefault(); userDialog(f.user_id, load); } }, f.name), h('span', { class: 'mono muted' }, f.contact),
+        f.app_version ? h('span', { class: 'muted' }, 'v' + f.app_version) : null, f.device ? h('span', { class: 'muted' }, f.device) : null, h('span', { class: 'grow' }),
+        f.status !== 'read' ? h('button', { class: 'btn sm', onclick: () => setStatus(f, 'read') }, 'Mark read') : null,
+        f.status !== 'done' ? h('button', { class: 'btn sm', onclick: () => setStatus(f, 'done') }, 'Mark done') : h('button', { class: 'btn sm', onclick: () => setStatus(f, 'new') }, 'Reopen'),
+        h('button', { class: 'btn sm danger', onclick: async () => { if (!confirm('Delete this feedback?')) return; await act(() => api('DELETE', '/feedback/' + f.id), 'Deleted'); load(); } }, 'Delete'))))
+      : [h('div', { class: 'card empty' }, 'No feedback yet. It appears here when users send it from Profile → Send feedback.')]),
+      pagerBox(st, r.total, load));
+  };
+  const pagerBox = (s2, total, ld) => pager(s2, total, ld);
+  main.replaceChildren(head, list);
   await load();
 }
 

@@ -1,4 +1,5 @@
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
+import { SMS_ENABLED } from '../config';
 import { parseAppNotification, parseBankSms, type AppNotification, type RawTransaction, type SmsMessage } from '@upi/core';
 
 interface Native {
@@ -13,17 +14,19 @@ interface Native {
   saveReport(name: string, content: string, mime: string): Promise<string>;
   setLockScreenCard(enabled: boolean): void;
   isLockScreenCardEnabled(): Promise<boolean>;
+  setSecureScreen(enabled: boolean): void;
+  isSecureScreen(): Promise<boolean>;
 }
 const native: Native | undefined = Platform.OS === 'android' ? NativeModules.PaisaInbox : undefined;
 
 export const inboxAvailable = !!native;
 
 export async function hasSmsPermission(): Promise<boolean> {
-  return Platform.OS === 'android' && (await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_SMS));
+  return SMS_ENABLED && Platform.OS === 'android' && (await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_SMS));
 }
 
 export async function requestSmsPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') return false;
+  if (!SMS_ENABLED || Platform.OS !== 'android') return false;
   const r = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_SMS, {
     title: 'Read bank SMS',
     message: 'Paisa reads debit/credit alerts from your bank SMS on this device to build your daily spend. Messages never leave your phone and OTPs are ignored.',
@@ -37,11 +40,13 @@ export async function requestSmsPermission(): Promise<boolean> {
 /** Lets the widgets and lock-screen card update the instant a bank SMS arrives, even with the app closed.
  *  Same permission group as READ_SMS, so Android grants it without another dialog. */
 export async function ensureReceiveSms(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (!SMS_ENABLED || Platform.OS !== 'android') return;
   const p = PermissionsAndroid.PERMISSIONS.RECEIVE_SMS;
   if (!(await PermissionsAndroid.check(p))) await PermissionsAndroid.request(p);
 }
 
+export const setSecureScreen = (on: boolean) => native?.setSecureScreen(on);
+export const secureScreenEnabled = () => native?.isSecureScreen() ?? Promise.resolve(true);
 export const setLockScreenCard = (on: boolean) => native?.setLockScreenCard(on);
 export const lockScreenCardEnabled = () => native?.isLockScreenCardEnabled() ?? Promise.resolve(false);
 

@@ -17,6 +17,10 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    // Hide app content from screenshots, screen recording and the recent-apps thumbnail (user can turn this off in Profile).
+    if (getSharedPreferences(PaisaWidgetProvider.PREFS, MODE_PRIVATE).getBoolean("secureScreen", true)) {
+      window.setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE, android.view.WindowManager.LayoutParams.FLAG_SECURE)
+    }
   }
 
   /**

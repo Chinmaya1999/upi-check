@@ -3,8 +3,23 @@
 	email chinmaya.dob1999@gmail.com
 }
 
+# Shared hardening: HSTS (HTTPS only, 1 year), no sniffing/framing, no server banner, capped request bodies.
+(secure) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+	request_body {
+		max_size 6MB
+	}
+}
+
 # Mobile app API. The admin dashboard is never reachable on this hostname.
 api.paisaduniya.in {
+	import secure
 	encode gzip
 	@admin path /admin /admin/*
 	respond @admin 404
@@ -13,6 +28,7 @@ api.paisaduniya.in {
 
 # Admin dashboard only: /admin and /admin/api/*. Everything else goes to the dashboard.
 paisaduniya.in {
+	import secure
 	encode gzip
 	@admin path /admin /admin/*
 	handle @admin {
