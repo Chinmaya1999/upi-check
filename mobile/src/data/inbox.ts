@@ -7,7 +7,9 @@ interface Native {
   openNotificationAccessSettings(): void;
   drainNotifications(): Promise<AppNotification[]>;
   updateWidget(todayDebit: number, todayCredit: number, monthDebit: number, weekDebit: number, budgetPct: number, budgetLabel: string, dayKey: string): void;
-  notify(title: string, body: string, id: number, sound: boolean): void;
+  notify(title: string, body: string, id: number, sound: boolean, level: string): void;
+  setPaymentNotifications(enabled: boolean): void;
+  isPaymentNotificationsEnabled(): Promise<boolean>;
   saveReport(name: string, content: string, mime: string): Promise<string>;
   setLockScreenCard(enabled: boolean): void;
   isLockScreenCardEnabled(): Promise<boolean>;
@@ -75,5 +77,7 @@ export async function notificationsAllowed(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   return Number(Platform.Version) < 33 || PermissionsAndroid.check('android.permission.POST_NOTIFICATIONS' as const);
 }
-export const postNotification = (title: string, body: string, id: number, sound: boolean) => native?.notify(title, body, id, sound);
+export const postNotification = (title: string, body: string, id: number, sound: boolean, level: 'warn' | 'over' | 'info' = 'info') => native?.notify(title, body, id, sound, level);
+export const setPaymentNotifications = (on: boolean) => native?.setPaymentNotifications(on);
+export const paymentNotificationsEnabled = () => native?.isPaymentNotificationsEnabled() ?? Promise.resolve(false);
 export const saveReportFile = (name: string, content: string, mime: string) => native ? native.saveReport(name, content, mime) : Promise.reject(new Error('Saving files needs the Android app'));

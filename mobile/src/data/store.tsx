@@ -244,7 +244,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       for (const a of fresh) {
         seen[a.key] = 1;
         const id = Date.now() % 100000 + log.length;
-        postNotification(a.title, a.body, id, prefs.sound);
+        postNotification(a.title, a.body, id, prefs.sound, a.level);
         log.unshift({ id, at: Date.now(), title: a.title, body: a.body, period: a.period, level: a.level });
       }
       await db.setMeta('alerted', JSON.stringify(Object.fromEntries(Object.keys(seen).slice(-200).map((k) => [k, 1]))));

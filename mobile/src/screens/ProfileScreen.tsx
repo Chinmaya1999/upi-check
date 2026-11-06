@@ -8,14 +8,15 @@ import { Button, Card, Eyebrow } from '../components/ui';
 import { SyncCard } from '../components/SyncCard';
 import { clearProfile, saveProfile, type Profile } from '../data/session';
 import * as api from '../data/api';
-import { ensureNotifyPermission, lockScreenCardEnabled, setLockScreenCard } from '../data/inbox';
+import { ensureNotifyPermission, lockScreenCardEnabled, paymentNotificationsEnabled, setLockScreenCard, setPaymentNotifications } from '../data/inbox';
 
 export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Profile; onProfile: (p: Profile) => void; onSignOut: () => void }) {
   const { colors, mode, setMode } = useTheme();
   const insets = useSafeAreaInsets();
   const { reset, txns, server, pushToServer } = useStore();
   const [lockCard, setLockCard] = useState(true);
-  useEffect(() => { lockScreenCardEnabled().then(setLockCard).catch(() => {}); }, []);
+  const [payNotif, setPayNotif] = useState(true);
+  useEffect(() => { lockScreenCardEnabled().then(setLockCard).catch(() => {}); paymentNotificationsEnabled().then(setPayNotif).catch(() => {}); }, []);
 
   const row = (icon: string, title: string, sub: string, right?: React.ReactNode) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }}>
@@ -72,6 +73,9 @@ export function ProfileScreen({ profile, onProfile, onSignOut }: { profile: Prof
         {row('lock-closed', 'Show spend on lock screen', 'A quiet card with today\'s spend, updated the moment a payment SMS arrives',
           <Switch value={lockCard} trackColor={{ true: colors.brand }} accessibilityLabel="Show spend on lock screen"
             onValueChange={async (v) => { setLockCard(v); if (v) await ensureNotifyPermission(); setLockScreenCard(v); }} />)}
+        {row('notifications', 'Payment notifications', 'A colourful "₹30 spent" / "₹500 received" alert the moment a payment is detected',
+          <Switch value={payNotif} trackColor={{ true: colors.brand }} accessibilityLabel="Payment notifications"
+            onValueChange={async (v) => { setPayNotif(v); if (v) await ensureNotifyPermission(); setPaymentNotifications(v); }} />)}
         {row('apps', 'Home-screen widgets', 'Long-press your home screen → Widgets → Paisa. Pick the small (2×1) or large (4×2) one.')}
       </Card>
 

@@ -68,33 +68,17 @@ class PaisaInboxModule(private val ctx: ReactApplicationContext) : ReactContextB
   @ReactMethod
   fun isLockScreenCardEnabled(promise: Promise) { promise.resolve(LiveNotification.enabled(ctx)) }
 
-  /** Posts a budget alert. Two channels so the user's sound preference is honoured (Android fixes sound per channel). */
+  /** A coloured notification when a payment is detected (bank SMS / UPI app). */
   @ReactMethod
-  fun notify(title: String, body: String, id: Int, sound: Boolean) {
-    val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val channel = if (sound) "paisa_alerts" else "paisa_alerts_silent"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(channel) == null) {
-      val c = NotificationChannel(channel, if (sound) "Budget alerts" else "Budget alerts (silent)", NotificationManager.IMPORTANCE_HIGH)
-      c.description = "Warns you when spending crosses a daily, weekly or monthly budget"
-      c.enableVibration(true)
-      if (sound) {
-        c.setSound(
-          RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
-          AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
-        )
-      } else c.setSound(null, null)
-      nm.createNotificationChannel(c)
-    }
-    val open = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-    val pi = PendingIntent.getActivity(ctx, id, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    val b = NotificationCompat.Builder(ctx, channel)
-      .setSmallIcon(ctx.applicationInfo.icon)
-      .setContentTitle(title).setContentText(body)
-      .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-      .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_REMINDER)
-      .setContentIntent(pi).setAutoCancel(true)
-    if (sound) b.setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
-    try { nm.notify(id, b.build()) } catch (_: SecurityException) { /* POST_NOTIFICATIONS not granted */ }
+  fun setPaymentNotifications(enabled: Boolean) { LiveNotification.setTxnEnabled(ctx, enabled) }
+
+  @ReactMethod
+  fun isPaymentNotificationsEnabled(promise: Promise) { promise.resolve(LiveNotification.txnEnabled(ctx)) }
+
+  /** Posts a colourful budget alert. level: "over" (red), "warn" (amber) or anything else (info). Sound is per channel on Android. */
+  @ReactMethod
+  fun notify(title: String, body: String, id: Int, sound: Boolean, level: String) {
+    LiveNotification.postAlert(ctx, title, body, id, sound, level)
   }
 
   /** Saves a report into the public Downloads folder and returns where it went. */

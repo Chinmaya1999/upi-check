@@ -106,5 +106,6 @@ object LiveTotals {
     }
     ed.putLong("savedAt", now).apply()
     PaisaWidgetProvider.refresh(context)
+    LiveNotification.postTransaction(context, p.debit, p.paise)
   }
 }
