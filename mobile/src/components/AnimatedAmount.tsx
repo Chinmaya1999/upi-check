@@ -20,7 +20,7 @@ export function AnimatedAmount({ paise, style, duration = 900 }: { paise: number
   );
 
   return (
-    <Text style={style} accessibilityLabel={formatINR(paise)} accessibilityRole="text">
+    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={style} accessibilityLabel={formatINR(paise)} accessibilityRole="text">
       {formatINR(shown)}
     </Text>
   );

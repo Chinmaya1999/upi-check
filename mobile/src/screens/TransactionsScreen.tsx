@@ -96,7 +96,7 @@ export function TransactionsScreen() {
           return (
             <Animated.View entering={reduce ? undefined : FadeInRight.delay(index * 70).duration(380)}>
               <Tap onPress={() => setBankId(isAll ? null : item.bank.id)} label={isAll ? 'All banks' : item.bank.name}
-                style={{ width: 168, padding: 14, borderRadius: 22, gap: 10, backgroundColor: on ? (c ? c.bank.bg : colors.chipOn) : colors.card, borderWidth: on ? 0 : 1, borderColor: colors.border }}>
+                style={{ width: 196, padding: 14, borderRadius: 22, gap: 10, backgroundColor: on ? (c ? c.bank.bg : colors.chipOn) : colors.card, borderWidth: on ? 0 : 1, borderColor: colors.border }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   {c ? <BankBadge bank={on ? { ...c.bank, bg: 'rgba(255,255,255,0.22)' } : c.bank} size={38} /> : (
                     <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: on ? 'rgba(255,255,255,0.2)' : colors.cardAlt, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="apps" size={19} color={on ? '#fff' : colors.text} /></View>
@@ -106,14 +106,14 @@ export function TransactionsScreen() {
                     <Text style={{ color: on ? 'rgba(255,255,255,0.75)' : colors.textMuted, fontSize: 11.5 }}>{c ? (c.bank.last4 ? `A/c ••${c.bank.last4}` : 'Account') : `${banks.length} accounts`}</Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View>
-                    <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5 }}>DEBIT</Text>
-                    <Text style={{ color: on ? '#fff' : colors.expense, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.d : sum(txns).d)}</Text>
+                <View style={{ gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                    <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5, letterSpacing: 0.4 }}>DEBIT</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ flexShrink: 1, color: on ? '#fff' : colors.expense, fontWeight: '800', fontSize: 14.5 }}>{formatINR(c ? c.d : sum(txns).d)}</Text>
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5 }}>CREDIT</Text>
-                    <Text style={{ color: on ? '#fff' : colors.income, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.c : sum(txns).c)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                    <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5, letterSpacing: 0.4 }}>CREDIT</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ flexShrink: 1, color: on ? '#fff' : colors.income, fontWeight: '800', fontSize: 14.5 }}>{formatINR(c ? c.c : sum(txns).c)}</Text>
                   </View>
                 </View>
                 <Text style={{ color: on ? 'rgba(255,255,255,0.8)' : colors.textMuted, fontSize: 11.5, fontWeight: '600' }}>{c ? c.list.length : txns.length} transactions</Text>
@@ -175,10 +175,10 @@ export function TransactionsScreen() {
         })}
       </View>
       <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: 18, padding: 14 }}>
-        {[['Transactions', String(sections.rows.length), colors.text], ['Debit', formatINR(tot.d), colors.expense], ['Credit', formatINR(tot.c), colors.income]].map(([k, v, col]) => (
-          <View key={k} style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>{k}</Text>
-            <Text style={{ color: col, fontSize: 17, fontWeight: '800', marginTop: 2 }}>{v}</Text>
+        {[['Transactions', String(sections.rows.length), colors.text, 0.7], ['Debit', formatINR(tot.d), colors.expense, 1.2], ['Credit', formatINR(tot.c), colors.income, 1.2]].map(([k, v, col, flex]) => (
+          <View key={String(k)} style={{ flex: flex as number, paddingRight: 6 }}>
+            <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 11.5 }}>{k}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ color: col as string, fontSize: 17, fontWeight: '800', marginTop: 2 }}>{v}</Text>
           </View>
         ))}
       </View>

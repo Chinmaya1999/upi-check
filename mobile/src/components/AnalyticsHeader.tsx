@@ -81,7 +81,7 @@ export function AnalyticsHeader() {
         </Card>
         <Card style={{ flex: 1, padding: space.md + 2 }}>
           <Eyebrow>Net</Eyebrow>
-          <Text style={{ color: net < 0 ? colors.expense : colors.income, fontSize: 20, fontWeight: '800', marginTop: 6 }}>{net < 0 ? '−' : '+'}{formatINR(Math.abs(net))}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ color: net < 0 ? colors.expense : colors.income, fontSize: 20, fontWeight: '800', marginTop: 6 }}>{net < 0 ? '−' : '+'}{formatINR(Math.abs(net))}</Text>
         </Card>
       </Animated.View>
 
@@ -106,7 +106,7 @@ export function AnalyticsHeader() {
               <View style={{ alignItems: 'center' }}>
                 <Donut slices={cats.map((c) => ({ color: c.color, value: c.paise }))}>
                   <Text style={{ color: colors.textMuted, fontSize: 11 }}>Total</Text>
-                  <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{formatINR(report.spent)}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>{formatINR(report.spent)}</Text>
                 </Donut>
               </View>
               {cats.map((c, i) => (
@@ -114,7 +114,7 @@ export function AnalyticsHeader() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: c.color + '26', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={c.icon as never} size={16} color={c.color} /></View>
                     <Text style={{ flex: 1, color: colors.text, fontWeight: '600' }}>{c.label}</Text>
-                    <Text style={{ color: colors.text, fontWeight: '800' }}>{formatINR(c.paise)}</Text>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={{ color: colors.text, fontWeight: '800' }}>{formatINR(c.paise)}</Text>
                     <Text style={{ color: colors.textMuted, width: 38, textAlign: 'right', fontSize: 12 }}>{c.pct}%</Text>
                   </View>
                   <ShareBar pct={c.pct} color={c.color} delay={i * 90} />
