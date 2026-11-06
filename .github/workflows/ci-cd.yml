@@ -73,6 +73,8 @@ jobs:
         run: npm run typecheck -w @upi/core -w @upi/backend
       - name: Build backend bundle
         run: npm run build -w backend
+      - name: Backend API tests (sign-up OTP, login, profile, feedback, admin, festivals)
+        run: npm test -w backend
       - name: Install + typecheck mobile app
         working-directory: mobile
         run: |
@@ -184,6 +186,8 @@ jobs:
           done
           echo "::error title=HTTPS not reachable::$API_URL did not come up. Check DNS, security group port 443, and 'docker logs paisa-caddy'."; exit 1
       - name: Smoke test public API (${{ env.API_URL }})
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}   # lets the test create its throwaway verified account via the admin API
         run: bash scripts/smoke-test.sh "$API_URL" "$ADMIN_URL"
       - name: Show server state on failure
         if: failure()

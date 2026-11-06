@@ -38,6 +38,26 @@
   .brand { display:flex; align-items:center; gap:11px; padding:4px 8px 18px; }
   .logo { width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,var(--brand),var(--brand2)); color:#fff; display:grid; place-items:center; font-weight:800; font-size:19px; box-shadow:0 6px 18px rgba(108,76,245,.5); }
   .brand b { display:block; color:#fff; font-size:16px; letter-spacing:-.2px; } .brand small { color:var(--side-muted); font-size:11.5px; }
+
+  /* festival previews */
+  .fest { position:relative; overflow:hidden; border-radius:16px; padding:18px 18px 16px; min-height:150px; display:flex; flex-direction:column; justify-content:flex-end; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+  .fest .ftxt { position:relative; z-index:2; display:grid; gap:2px; text-shadow:0 1px 8px rgba(0,0,0,.25); } .fest .ftxt b { font-size:19px; letter-spacing:-.3px; } .fest .ftxt small { font-size:12.5px; opacity:.92; }
+  .fest .femoji { font-size:30px; line-height:1; margin-bottom:4px; }
+  .fest .lights { position:absolute; top:6px; left:0; right:0; display:flex; justify-content:space-around; z-index:1; }
+  .fest .lights i { width:9px; height:9px; border-radius:50%; box-shadow:0 0 10px 2px currentColor; animation:f-twink 1.6s ease-in-out infinite; }
+  .fest .p { position:absolute; top:0; z-index:1; pointer-events:none; opacity:0; animation-iteration-count:infinite; animation-timing-function:linear; }
+  .fest .p.fall { animation-name:f-fall; } .fest .p.rise { animation-name:f-rise; } .fest .p.twinkle { animation-name:f-twink2; }
+  .fest .p.float { animation-name:f-float; } .fest .p.burst { animation-name:f-burst; animation-timing-function:ease-out; } .fest .p.sway { animation-name:f-sway; animation-timing-function:ease-in-out; }
+  @keyframes f-twink { 0%,100%{opacity:.35;transform:scale(.8)} 50%{opacity:1;transform:scale(1.15)} }
+  @keyframes f-fall { 0%{transform:translateY(-24px) rotate(0);opacity:0} 12%{opacity:.95} 100%{transform:translateY(190px) rotate(200deg);opacity:0} }
+  @keyframes f-rise { 0%{transform:translateY(190px) scale(.7);opacity:0} 15%{opacity:.95} 100%{transform:translateY(-20px) scale(1.1);opacity:0} }
+  @keyframes f-twink2 { 0%,100%{transform:scale(.3);opacity:0} 50%{transform:scale(1.25);opacity:1} }
+  @keyframes f-float { 0%{transform:translate(0,170px);opacity:0} 15%{opacity:.9} 50%{transform:translate(14px,80px)} 100%{transform:translate(-8px,-24px);opacity:0} }
+  @keyframes f-burst { 0%{transform:scale(.1) translateY(50px);opacity:0} 25%{opacity:1} 100%{transform:scale(1.7) translateY(20px);opacity:0} }
+  @keyframes f-sway { 0%{transform:translate(0,150px) rotate(-18deg);opacity:0} 15%{opacity:.95} 50%{transform:translate(10px,70px) rotate(18deg)} 100%{transform:translate(-6px,-20px) rotate(-18deg);opacity:0} }
+  @media (prefers-reduced-motion: reduce) { .fest .p, .fest .lights i { animation:none !important; opacity:.7 !important; } }
+  .festgrid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .festcard { display:grid; gap:10px; } .festcard.live { outline:2px solid var(--brand); outline-offset:2px; }
   .navgroup { margin:14px 0 4px; padding:0 10px; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--side-muted); font-weight:700; }
   .navitem { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border:0; border-radius:11px; background:none; color:var(--side-ink); cursor:pointer; text-align:left; position:relative; transition:background .15s,color .15s; }
   .navitem:hover { background:rgba(255,255,255,.06); color:#fff; }
@@ -210,6 +230,7 @@ const openDlg = (...nodes) => { $('#dlgBody').replaceChildren(...nodes); const d
 
 // ───────── icons (static trusted paths, built with createElementNS) ─────────
 const ICONS = {
+  sparkle: 'M12 3l2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6z M19 3v4 M21 5h-4',
   chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
   grid: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
@@ -277,11 +298,11 @@ const NAV = [
   ['Dashboard', [['overview', 'Overview', 'grid', 'Live numbers across your whole app']]],
   ['People', [['users', 'Users', 'users', 'Accounts, passwords and access'], ['sessions', 'Devices', 'phone', 'Every signed-in device. Sign any of them out'], ['feedback', 'Feedback', 'chat', 'What users write from the app: ideas, bugs and praise']]],
   ['Money', [['transactions', 'Transactions', 'list', 'Every synced transaction, searchable']]],
-  ['App', [['design', 'App design', 'palette', 'Switch the look of every phone, live'], ['controls', 'App controls', 'sliders', 'Feature switches, maintenance and messages']]],
+  ['App', [['design', 'App design', 'palette', 'Switch the look of every phone, live'], ['controls', 'App controls', 'sliders', 'Feature switches, maintenance and messages'], ['festivals', 'Festivals', 'sparkle', 'Festival and national-holiday themes. Go live on every phone']]],
   ['System', [['audit', 'Audit log', 'check', 'Every admin action, recorded']]],
 ];
 const PAGES = Object.fromEntries(NAV.flatMap(([, items]) => items.map(([k, label, ic, sub]) => [k, { label, ic, sub }])));
-const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, feedback: viewFeedback, design: viewDesign, controls: viewControls, audit: viewAudit };
+const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, feedback: viewFeedback, design: viewDesign, festivals: viewFestivals, controls: viewControls, audit: viewAudit };
 let tab = 'overview';
 let pendingSearch = '';
 let statusTimer;
@@ -593,6 +614,40 @@ async function viewSessions(main) {
         h('td', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); userDialog(s.user_id, () => go('sessions')); } }, s.name)), h('td', { class: 'mono' }, s.contact),
         h('td', {}, s.created_at ? when(s.created_at) : 'before tracking'), h('td', {}, when(s.expires_at)),
         h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await act(() => api('DELETE', '/sessions/' + s.id), 'Signed out'); go('sessions'); } }, 'Sign out')))))) : h('div', { class: 'empty' }, 'No active sessions')));
+}
+
+// ───────── festivals ─────────
+function festivalPreview(f) {
+  const box = h('div', { class: 'fest', style: `background:linear-gradient(135deg,${f.gradient.join(',')});color:${f.text}` });
+  if (f.lights.length) box.append(h('div', { class: 'lights' }, Array.from({ length: 13 }, (_, i) => h('i', { style: `color:${f.lights[i % f.lights.length]};background:${f.lights[i % f.lights.length]};animation-delay:${((i * 0.27) % 1.8).toFixed(2)}s` }))));
+  for (let i = 0; i < 12; i++) {
+    box.append(h('span', { class: 'p ' + f.motion, style: `left:${(i * 41 + 7) % 92}%;font-size:${14 + (i * 7) % 12}px;animation-duration:${(4.5 + (i * 13) % 30 / 10).toFixed(1)}s;animation-delay:${((i * 0.55) % 5).toFixed(2)}s` }, f.particles[i % f.particles.length]));
+  }
+  box.append(h('div', { class: 'ftxt' }, h('div', { class: 'femoji' }, f.emoji), h('b', {}, f.greeting), h('small', {}, f.tagline)));
+  return box;
+}
+
+async function viewFestivals(main) {
+  const r = await api('GET', '/festivals');
+  const cur = r.festivals.find((f) => f.id === r.live);
+  const until = h('input', { type: 'date', value: r.until || '', 'aria-label': 'Turn off after', style: 'min-width:160px' });
+  const set = async (id, msg) => { await act(() => api('PUT', '/config', { festival: id, festivalUntil: id ? (until.value || '') : '' }), msg); go('festivals'); };
+  const status = cur
+    ? h('div', { class: 'card', style: 'display:flex;align-items:center;gap:14px;flex-wrap:wrap;border-left:4px solid var(--brand)' },
+        h('div', { style: 'font-size:34px' }, cur.emoji), h('div', { style: 'flex:1;min-width:200px' }, h('b', { style: 'font-size:16px' }, cur.name + ' is live on every phone'),
+          h('div', { class: 'muted' }, r.until ? 'Turns off automatically after ' + new Date(r.until + 'T00:00:00').toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'Stays on until you turn it off')),
+        h('button', { class: 'btn danger', onclick: () => set('', 'Festival theme turned off') }, 'Turn off'))
+    : h('div', { class: 'card muted' }, r.active ? 'The chosen festival has passed its end date, so phones show the normal app design.' : 'No festival theme is live. Phones show the normal app design.');
+  main.replaceChildren(
+    h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'Festival & holiday themes'), h('span', { class: 'muted' }, 'Pick one and press Go live. Phones show it within seconds, with no app update.')),
+    status,
+    h('div', { class: 'card row', style: 'gap:12px;flex-wrap:wrap' }, h('label', { style: 'font-weight:600' }, 'Turn off automatically after (optional)'), until,
+      h('span', { class: 'muted' }, 'Set this before pressing Go live, so the theme ends by itself.')),
+    h('div', { class: 'festgrid' }, r.festivals.map((f) => h('div', { class: 'card festcard' + (f.id === r.live ? ' live' : '') },
+      festivalPreview(f),
+      h('div', { class: 'row', style: 'gap:8px' }, h('b', {}, f.name), pill(f.kind === 'national' ? 'National' : 'Festival', f.kind === 'national' ? 'brand' : 'gray'), h('span', { class: 'grow' }),
+        f.id === r.live ? h('button', { class: 'btn danger sm', onclick: () => set('', 'Turned off') }, 'Turn off')
+          : h('button', { class: 'btn sm', onclick: () => set(f.id, f.name + ' is live') }, 'Go live'))))));
 }
 
 // ───────── app design: ten complete looks, switched live ─────────

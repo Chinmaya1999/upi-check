@@ -3,7 +3,7 @@ import { privacyHtml, deleteHtml } from './legal';
 import { sendOtp, sendNotice, type OtpPurpose } from './mail';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { resolveDesign, summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
+import { resolveDesign, resolveFestival, summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
 import { createAdmin } from './admin';
 
 const PORT = Number(process.env.PORT ?? 80);
@@ -133,7 +133,10 @@ DUMMY.hash = crypto.scryptSync('dummy-password', DUMMY.salt, 64).toString('hex')
 
 // Naive per-IP limiter for auth endpoints.
 const hits = new Map<string, number[]>();
-function limit(ip: string, max = 20, windowMs = 60_000) {
+// Per-IP auth cap. Mobile carriers put many users behind one IP, so this is generous; the real brute-force defences
+// are the per-account lockout and the per-email OTP limits above.
+const AUTH_LIMIT = Number(process.env.AUTH_RATE_LIMIT ?? 60);
+function limit(ip: string, max = AUTH_LIMIT, windowMs = 60_000) {
   const now = Date.now();
   const arr = (hits.get(ip) ?? []).filter((t) => now - t < windowMs);
   arr.push(now);
@@ -213,7 +216,7 @@ function authUser(req: http.IncomingMessage) {
 }
 
 // Admin-controlled runtime settings (see admin.ts). Read per request: one tiny indexed lookup.
-const CONFIG_DEFAULTS = { registrationsOpen: true, syncEnabled: true, maintenanceMode: false, maintenanceMessage: '', announcement: '', minAppVersion: '', uiDesign: 'aurora', uiMotion: '' };
+const CONFIG_DEFAULTS = { registrationsOpen: true, syncEnabled: true, maintenanceMode: false, maintenanceMessage: '', announcement: '', minAppVersion: '', uiDesign: 'aurora', uiMotion: '', festival: '', festivalUntil: '' };
 type AppConfig = typeof CONFIG_DEFAULTS;
 function getConfig(): AppConfig {
   const out: Record<string, unknown> = { ...CONFIG_DEFAULTS };
@@ -254,7 +257,7 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse) {
   switch (`${req.method} ${url.pathname}`) {
     case 'GET /config': {
       const c = getConfig();
-      return send(res, 200, { maintenanceMode: c.maintenanceMode, maintenanceMessage: c.maintenanceMessage, announcement: c.announcement, minAppVersion: c.minAppVersion, registrationsOpen: c.registrationsOpen, design: resolveDesign(c.uiDesign, c.uiMotion) });
+      return send(res, 200, { maintenanceMode: c.maintenanceMode, maintenanceMessage: c.maintenanceMessage, announcement: c.announcement, minAppVersion: c.minAppVersion, registrationsOpen: c.registrationsOpen, design: resolveDesign(c.uiDesign, c.uiMotion), festival: resolveFestival(c.festival, c.festivalUntil) });
     }
 
     case 'GET /privacy':

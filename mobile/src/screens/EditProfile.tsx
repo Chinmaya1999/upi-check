@@ -7,6 +7,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme, space, radius } from '../theme';
 import { Button, Card, Eyebrow, Tap } from '../components/ui';
 import { Avatar } from '../components/Avatar';
+import { SpamHint } from '../components/SpamHint';
 import { saveProfile, validateEmail, validatePhoneOptional, type Profile } from '../data/session';
 import { setAvatarLocal, useAvatar } from '../data/avatar';
 import * as api from '../data/api';
@@ -124,6 +125,7 @@ export function EditProfile({ visible, profile, onClose, onProfile }: { visible:
             {emailStep === 'code' && <View style={{ marginTop: 14 }}>
               {label('6-digit code sent to the new address')}
               <TextInput value={otp} onChangeText={(t) => setOtp(t.replace(/\D/g, '').slice(0, 6))} style={{ ...input, textAlign: 'center', fontSize: 24, fontWeight: '800', letterSpacing: 8 }} keyboardType="number-pad" maxLength={6} accessibilityLabel="Email verification code" autoFocus />
+              <View style={{ marginTop: 12 }}><SpamHint email={newEmail.trim().toLowerCase()} /></View>
             </View>}
             <View style={{ marginTop: 16, gap: 8 }}>
               {emailStep === 'idle'

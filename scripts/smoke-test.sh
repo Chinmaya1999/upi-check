@@ -10,26 +10,39 @@ J=(-H 'content-type: application/json')
 EMAIL="smoke$(date +%s)$RANDOM@example.com"; PW='smoke-pass-123'
 # Payloads built with jq into variables: portable across bash 3.2 (macOS) and 5 (CI).
 body() { jq -nc "$@"; }
-REG=$(body --arg c "$EMAIL" --arg p "$PW" '{name:"Smoke",contact:$c,password:$p}')
-REG_SHORT=$(body --arg c "$EMAIL" '{name:"Smoke",contact:$c,password:"abc"}')
-REG_BADCONTACT=$(body --arg p "$PW" '{name:"Smoke",contact:"123",password:$p}')
+START_SHORT=$(body --arg e "$EMAIL" '{name:"Smoke",email:$e,password:"abc"}')
+START_BADMAIL=$(body --arg p "$PW" '{name:"Smoke",email:"123",password:$p}')
+START_DUP=$(body --arg e "$EMAIL" --arg p "$PW" '{name:"Smoke",email:$e,password:$p}')
 LOGIN=$(body --arg c "$EMAIL" --arg p "$PW" '{contact:$c,password:$p}')
 LOGIN_BAD=$(body --arg c "$EMAIL" '{contact:$c,password:"wrong-wrong"}')
+ADMIN="${2:-$BASE}"   # admin dashboard lives on its own hostname
 
 expect "GET /health"                  200 "$(req "$BASE/health")"
-expect "register: short password"     400 "$(req -X POST "$BASE/auth/register" "${J[@]}" -d "$REG_SHORT")"
-expect "register: bad contact"        400 "$(req -X POST "$BASE/auth/register" "${J[@]}" -d "$REG_BADCONTACT")"
-expect "register"                     201 "$(req -X POST "$BASE/auth/register" "${J[@]}" -d "$REG")"
-expect "register: duplicate"          409 "$(req -X POST "$BASE/auth/register" "${J[@]}" -d "$REG")"
+# Sign-up now needs an emailed code, which a script can't read: check the validation + retired endpoint here,
+# and create the throwaway (already verified) account through the admin API below.
+expect "register/start: short password" 400 "$(req -X POST "$BASE/auth/register/start" "${J[@]}" -d "$START_SHORT")"
+expect "register/start: bad email"      400 "$(req -X POST "$BASE/auth/register/start" "${J[@]}" -d "$START_BADMAIL")"
+expect "register/verify: no pending code" 400 "$(req -X POST "$BASE/auth/register/verify" "${J[@]}" -d "$(body --arg e "$EMAIL" '{email:$e,otp:"123456"}')")"
+expect "old /auth/register is retired"  410 "$(req -X POST "$BASE/auth/register" "${J[@]}" -d '{}')"
+expect "forgot password: always 200"    200 "$(req -X POST "$BASE/auth/forgot" "${J[@]}" -d '{"email":"nobody-smoke@example.invalid"}')"
+
+if [ -z "${ADMIN_PASSWORD:-}" ]; then
+  echo "  warn ADMIN_PASSWORD not provided: skipping the account-based checks"
+  [ $FAIL = 0 ] && echo "SMOKE TEST PASSED (partial)" || { echo "SMOKE TEST FAILED"; exit 1; }
+  exit $FAIL
+fi
+JAR=$(mktemp); trap 'rm -f "$JAR"' EXIT
+expect "admin sign-in" 200 "$(req -c "$JAR" -X POST "$ADMIN/admin/api/login" "${J[@]}" -d "$(body --arg p "$ADMIN_PASSWORD" '{password:$p}')")"
+expect "admin creates verified account" 201 "$(req -b "$JAR" -X POST "$ADMIN/admin/api/users" "${J[@]}" -H 'x-admin: 1' -d "$(body --arg e "$EMAIL" --arg p "$PW" '{name:"Smoke Test",email:$e,password:$p}')")"
+expect "register/start: email already used" 409 "$(req -X POST "$BASE/auth/register/start" "${J[@]}" -d "$START_DUP")"
 expect "login: wrong password"        401 "$(req -X POST "$BASE/auth/login" "${J[@]}" -d "$LOGIN_BAD")"
 expect "login"                        200 "$(req -X POST "$BASE/auth/login" "${J[@]}" -d "$LOGIN")"
 TOKEN=$(jq -r .token /tmp/smoke.body); [ -n "$TOKEN" ] && [ "$TOKEN" != null ] || { fail "token" "none returned"; exit 1; }
 # Always remove the throwaway account, even if a check above aborts the script.
-cleanup() { curl -sS -m 10 -o /dev/null -X DELETE "$BASE/me" -H "Authorization: Bearer ${CLEAN_TOKEN:-$TOKEN}" || true; }
+cleanup() { rm -f "${JAR:-}"; curl -sS -m 10 -o /dev/null -X DELETE "$BASE/me" -H "Authorization: Bearer ${CLEAN_TOKEN:-$TOKEN}" || true; }
 trap cleanup EXIT
 A=(-H "Authorization: Bearer $TOKEN")
-ADMIN="${2:-$BASE}"   # admin dashboard lives on its own hostname
-code=$(req "$ADMIN/admin/api/stats")
+code=$(curl -sS -m 15 -o /tmp/smoke.body -w '%{http_code}' "$ADMIN/admin/api/stats")
 case "$code" in
   401) pass "admin API requires sign-in" ;;
   404) echo "  warn admin dashboard is DISABLED on the server (set the ADMIN_PASSWORD secret and redeploy)" ;;

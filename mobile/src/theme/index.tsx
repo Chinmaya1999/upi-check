@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState, useColorScheme } from 'react-native';
-import { LAYOUT_DEFAULT, MOTIONS, contrastOn, resolveDesign, type MotionSpec, type ResolvedDesign } from '@upi/core';
+import { LAYOUT_DEFAULT, MOTIONS, contrastOn, resolveDesign, type Festival, type MotionSpec, type ResolvedDesign } from '@upi/core';
 import * as db from '../data/db';
 import { API_URL } from '../config';
 
@@ -50,13 +50,21 @@ function validDesign(x: any): x is ResolvedDesign {
 const withLayout = (d: ResolvedDesign): ResolvedDesign => ({ ...LAYOUT_DEFAULT, ...d });
 
 type Mode = 'system' | 'light' | 'dark';
-interface ThemeCtx { colors: Palette; isDark: boolean; mode: Mode; setMode: (m: Mode) => void; design: ResolvedDesign; motion: MotionSpec }
+interface ThemeCtx { colors: Palette; isDark: boolean; mode: Mode; setMode: (m: Mode) => void; design: ResolvedDesign; motion: MotionSpec; festival: Festival | null }
 const Ctx = createContext<ThemeCtx>(null as never);
+
+const MOTION_NAMES = ['rise', 'fall', 'twinkle', 'float', 'burst', 'sway'];
+/** Light shape check on what the server sent: a malformed festival must never crash Home. */
+const validFestival = (f: any): f is Festival => !!f && typeof f.id === 'string' && typeof f.greeting === 'string' && typeof f.tagline === 'string' && typeof f.emoji === 'string'
+  && Array.isArray(f.gradient) && f.gradient.length === 3 && f.gradient.every((c: unknown) => typeof c === 'string')
+  && typeof f.text === 'string' && Array.isArray(f.particles) && f.particles.length > 0 && f.particles.every((p: unknown) => typeof p === 'string')
+  && MOTION_NAMES.includes(f.motion) && Array.isArray(f.lights) && f.lights.every((c: unknown) => typeof c === 'string');
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const system = useColorScheme();
   const [mode, setMode] = useState<Mode>('system');
   const [design, setDesign] = useState<ResolvedDesign>(DEFAULT_DESIGN);
+  const [festival, setFestival] = useState<Festival | null>(null);
   const isDark = mode === 'system' ? system === 'dark' : mode === 'dark';
 
   // Live design: show the last one we saw immediately (works offline), then keep asking the server while the app is open.
@@ -65,6 +73,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const adopt = (d: ResolvedDesign) => { applyShape(d); setDesign((cur) => (JSON.stringify(cur) === JSON.stringify(d) ? cur : d)); };
     (async () => {
       try { const c = await db.getMeta('design'); if (c && alive) { const d = JSON.parse(c); if (validDesign(d)) adopt(withLayout(d)); } } catch { /* use default */ }
+      try { const c = await db.getMeta('festival'); if (c && alive) { const f = JSON.parse(c); if (validFestival(f)) setFestival(f); } } catch { /* none */ }
     })();
     const poll = async () => {
       try {
@@ -74,6 +83,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(t);
         const j = await r.json();
         if (alive && validDesign(j?.design)) { adopt(withLayout(j.design)); db.setMeta('design', JSON.stringify(j.design)).catch(() => {}); }
+        // Festival: present = show it, null = the admin turned it off (or it ended). Anything malformed is ignored.
+        if (alive && j && 'festival' in j) {
+          const f = validFestival(j.festival) ? j.festival : null;
+          setFestival((cur) => (JSON.stringify(cur) === JSON.stringify(f) ? cur : f));
+          db.setMeta('festival', f ? JSON.stringify(f) : '').catch(() => {});
+        }
       } catch { /* offline: keep what we have */ }
     };
     poll();
@@ -85,7 +100,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => { alive = false; stop(); sub.remove(); };
   }, []);
 
-  const value = useMemo(() => ({ colors: paletteFor(design, isDark), isDark, mode, setMode, design, motion: design.motionSpec ?? MOTIONS.smooth }), [design, isDark, mode]);
+  const value = useMemo(() => ({ colors: paletteFor(design, isDark), isDark, mode, setMode, design, motion: design.motionSpec ?? MOTIONS.smooth, festival }), [design, isDark, mode, festival]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 export const useTheme = () => useContext(Ctx);

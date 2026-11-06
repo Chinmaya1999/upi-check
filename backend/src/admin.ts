@@ -1,7 +1,7 @@
 import type http from 'node:http';
 import crypto from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { DESIGNS, MOTIONS, MOTION_LABELS, resolveDesign } from '../../packages/core/src/index';
+import { DESIGNS, FESTIVALS, MOTIONS, MOTION_LABELS, resolveDesign, resolveFestival } from '../../packages/core/src/index';
 import adminHtml from './admin.html';
 
 // Admin dashboard: served at /admin, JSON API at /admin/api/*.
@@ -60,7 +60,7 @@ export function createAdmin(ctx: Ctx) {
   const secure = (req: http.IncomingMessage) => (req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '');
   const like = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const int = (v: string | null, def: number, min: number, max: number) => {
-    const n = Number(v);
+    const n = v === null || v.trim() === '' ? NaN : Number(v);   // a missing param must fall back to the default, not become 0
     return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), min), max) : def;
   };
   const isDay = (s: string | null) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -175,7 +175,7 @@ export function createAdmin(ctx: Ctx) {
 
   const CONFIG_TYPES: Record<string, 'boolean' | 'string'> = {
     registrationsOpen: 'boolean', syncEnabled: 'boolean', maintenanceMode: 'boolean',
-    maintenanceMessage: 'string', announcement: 'string', minAppVersion: 'string', uiDesign: 'string', uiMotion: 'string',
+    maintenanceMessage: 'string', announcement: 'string', minAppVersion: 'string', uiDesign: 'string', uiMotion: 'string', festival: 'string', festivalUntil: 'string',
   };
 
   async function api(req: http.IncomingMessage, res: http.ServerResponse, url: URL, ip: string) {
@@ -224,6 +224,24 @@ export function createAdmin(ctx: Ctx) {
       audit('users.export', null, { rows: rows.length }, ip);
       res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="paisa-users.csv"', 'Cache-Control': 'no-store' });
       return void res.end(csv);
+    }
+
+    // Admin-created account: already email-verified (used by the CI smoke test and for support).
+    if (method === 'POST' && path === '/users') {
+      const b = await readJson(req);
+      const name = String(b.name ?? '').trim();
+      const email = normContact(String(b.email ?? ''));
+      const password = String(b.password ?? '');
+      if (name.length < 2 || name.length > 80) throw new HttpError(400, 'Name must be 2-80 characters');
+      if (!email.includes('@') || !validContact(email)) throw new HttpError(400, 'Enter a valid email address');
+      if (password.length < 8 || password.length > 128) throw new HttpError(400, 'Password must be at least 8 characters');
+      if (db.prepare('SELECT id FROM users WHERE email = ? OR contact = ?').get(email, email)) throw new HttpError(409, 'An account with this email already exists');
+      const id = crypto.randomUUID();
+      const salt = crypto.randomBytes(16).toString('hex');
+      db.prepare('INSERT INTO users (id, name, contact, email, email_verified, pass_hash, salt, created_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?)')
+        .run(id, name, email, email, hashPw(password, salt), salt, new Date().toISOString());
+      audit('user.create', id, { email }, ip);
+      return send(res, 201, { user: userRow(id) });
     }
 
     const um = /^\/users\/([0-9a-f-]{36})(?:\/([a-z-]+))?$/.exec(path);
@@ -350,6 +368,11 @@ export function createAdmin(ctx: Ctx) {
       const c = getConfig();
       return send(res, 200, { designs: DESIGNS, motions: Object.entries(MOTIONS).map(([id, spec]) => ({ id, label: MOTION_LABELS[id as keyof typeof MOTIONS], spec })), active: resolveDesign(c.uiDesign as string, c.uiMotion as string).id, motion: c.uiMotion });
     }
+    if (method === 'GET' && path === '/festivals') {
+      const c = getConfig();
+      const live = resolveFestival(c.festival as string, c.festivalUntil as string);
+      return send(res, 200, { festivals: FESTIVALS, active: c.festival, until: c.festivalUntil, live: live?.id ?? null });
+    }
     if (method === 'GET' && path === '/config') return send(res, 200, { config: getConfig() });
     if (method === 'PUT' && path === '/config') {
       const b = await readJson(req);
@@ -360,6 +383,8 @@ export function createAdmin(ctx: Ctx) {
         if (typeof v !== type) throw new HttpError(400, `${k} must be a ${type}`);
         if (k === 'uiDesign' && !DESIGNS.some((d) => d.id === v)) throw new HttpError(400, 'Unknown design');
         if (k === 'uiMotion' && v !== '' && !(v as string in MOTIONS)) throw new HttpError(400, 'Unknown animation style');
+        if (k === 'festival' && v !== '' && !FESTIVALS.some((f) => f.id === v)) throw new HttpError(400, 'Unknown festival');
+        if (k === 'festivalUntil' && v !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(v as string)) throw new HttpError(400, 'End date must look like 2026-11-12');
         if (type === 'string' && (v as string).length > 500) throw new HttpError(400, `${k} is too long (max 500 chars)`);
         changes[k] = type === 'string' ? (v as string).trim() : v;
       }

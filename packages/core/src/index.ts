@@ -8,3 +8,4 @@ export * from './demo';
 export * from './sms';
 export * from './designs';
 export * from './insights';
+export * from './festivals';

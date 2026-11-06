@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, space, radius } from '../theme';
 import { Button, Tap } from '../components/ui';
+import { SpamHint } from '../components/SpamHint';
 import { biometricsAvailable, saveProfile, validateContact, validateEmail, validatePhoneOptional, type Profile } from '../data/session';
 import { setAvatarLocal } from '../data/avatar';
 import * as api from '../data/api';
@@ -115,9 +116,11 @@ export function AuthForm({ initial, onDone, onBack }: { initial: 'login' | 'regi
   const pwField = (label: string, v: string, set: (s: string) => void, e?: string, ph = 'At least 8 characters') => field(label, (
     <View>
       <TextInput value={v} onChangeText={set} placeholder={ph} placeholderTextColor={colors.textMuted} style={{ ...input(e), paddingRight: 48 }} accessibilityLabel={label} secureTextEntry={!show} autoCapitalize="none" autoCorrect={false} />
-      <Tap onPress={() => setShow(!show)} label={show ? 'Hide password' : 'Show password'} style={{ position: 'absolute', right: 6, top: 0, height: 54, width: 42, alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={show ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
-      </Tap>
+      <View style={{ position: 'absolute', right: 6, top: 0, height: 54, width: 42 }}>
+        <Tap onPress={() => setShow(!show)} label={show ? 'Hide password' : 'Show password'} style={{ height: 54, width: 42, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name={show ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
+        </Tap>
+      </View>
     </View>
   ), e);
 
@@ -182,7 +185,7 @@ export function AuthForm({ initial, onDone, onBack }: { initial: 'login' | 'regi
             <OtpInput value={otp} onChange={(v) => { setOtp(v); setErr({}); }} />
             {!!err.otp && <Text style={{ color: colors.expense, fontSize: 13 }}>{err.otp}</Text>}
             {resendRow}
-            <Text style={{ color: colors.textMuted, fontSize: 12.5, textAlign: 'center' }}>Can’t find it? Check your spam folder. The code is valid for 10 minutes.</Text>
+            <SpamHint email={email.trim().toLowerCase()} />
           </>}
 
           {mode === 'forgot' && field('Email', <TextInput value={email} onChangeText={setEmail} placeholder="you@email.com" placeholderTextColor={colors.textMuted} style={input(err.email)} accessibilityLabel="Email" autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoFocus />, err.email)}
@@ -190,9 +193,10 @@ export function AuthForm({ initial, onDone, onBack }: { initial: 'login' | 'regi
           {mode === 'reset' && <>
             <OtpInput value={otp} onChange={(v) => { setOtp(v); setErr({}); }} />
             {!!err.otp && <Text style={{ color: colors.expense, fontSize: 13 }}>{err.otp}</Text>}
+            {resendRow}
+            <SpamHint email={email.trim().toLowerCase()} />
             {pwField('New password', password, setPassword, err.password)}
             {pwField('Confirm new password', password2, setPassword2, err.password2, 'Repeat the password')}
-            {resendRow}
           </>}
         </Animated.View>
         <View style={{ flex: 1 }} />

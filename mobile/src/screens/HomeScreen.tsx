@@ -16,6 +16,7 @@ import { BudgetStrip } from '../components/BudgetStrip';
 import { Insights } from '../components/Insights';
 import { TransactionRow } from '../components/TransactionRow';
 import type { Profile } from '../data/session';
+import { FestivalBanner, FestivalOverlay } from '../components/Festival';
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -25,7 +26,7 @@ const greeting = () => {
 const capitalize = (s: string) => s.trim().replace(/(^|\s)(\S)/g, (_, sp, c) => sp + c.toUpperCase());
 
 export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onAdd: () => void; onSeeAll: () => void }) {
-  const { colors, motion } = useTheme();
+  const { colors, motion, festival } = useTheme();
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion() || motion.enterMs === 0;
   const { ready, txns, dashboard: d, refresh, error, server } = useStore();
@@ -36,6 +37,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
   const enter = (i: number) => (reduce ? undefined : FadeInDown.delay(120 + i * motion.staggerMs).duration(motion.enterMs));
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{ paddingTop: insets.top + space.md, paddingBottom: 120, paddingHorizontal: space.lg, gap: space.lg }}
@@ -53,6 +55,8 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
           <Avatar name={profile.name} size={42} />
         </View>
       </View>
+
+      {festival ? <FestivalBanner festival={festival} /> : null}
 
       {server.state === 'error' && server.offline ? (
         <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.card, borderRadius: 16, padding: space.md }}>
@@ -79,6 +83,8 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
         <HomeBody d={d} onSeeAll={onSeeAll} enter={enter} />
       )}
     </ScrollView>
+    {festival ? <FestivalOverlay festival={festival} /> : null}
+    </View>
   );
 }
 
