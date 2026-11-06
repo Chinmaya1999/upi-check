@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
+import kotlin.math.abs
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -23,8 +24,12 @@ class PaisaWidgetProvider : AppWidgetProvider() {
     const val PREFS = "paisa_widget"
 
     private val inr = NumberFormat.getIntegerInstance(Locale("en", "IN"))
-    /** Nearest rupee, same rule as the app (formatINR with decimals off), so widget and app always match. */
-    fun rupees(paise: Long) = "₹" + inr.format((paise + 50) / 100)
+    /** Exact amount, same rule as the app's formatINR: paise are shown whenever they are not zero (₹219.60, ₹220). */
+    fun rupees(paise: Long): String {
+      val p = abs(paise)
+      val frac = p % 100
+      return (if (paise < 0) "-₹" else "₹") + inr.format(p / 100) + (if (frac != 0L) "." + frac.toString().padStart(2, '0') else "")
+    }
     private fun istDay(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("Asia/Kolkata") }.format(Date())
 
     /** Called from JS after every data change. */

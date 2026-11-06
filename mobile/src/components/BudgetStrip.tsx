@@ -24,7 +24,7 @@ export function BudgetStrip() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ color: colors.text, fontWeight: '700' }}>{PERIOD_LABEL[s.period]}</Text>
               <Text style={{ color: over ? colors.expense : colors.textMuted, fontSize: 12.5, fontWeight: '600' }}>
-                {formatINR(s.spent, { decimals: false })} / {formatINR(s.limit!, { decimals: false })}{over ? ' · over!' : ''}
+                {formatINR(s.spent)} / {formatINR(s.limit!)}{over ? ' · over!' : ''}
               </Text>
             </View>
             <ShareBar pct={Math.min(s.pct ?? 0, 100)} color={color} delay={i * 120} />

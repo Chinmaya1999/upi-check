@@ -56,7 +56,7 @@ function LimitCard({ s, index }: { s: BudgetStatus; index: number }) {
             <View style={{ flex: 1, gap: 8 }}>
               <View><Text style={{ color: colors.textMuted, fontSize: 12 }}>Spent</Text><AnimatedAmount paise={s.spent} style={{ color: over ? colors.expense : colors.text, fontSize: 22, fontWeight: '800' }} /></View>
               <Text style={{ color: over ? colors.expense : colors.textMuted, fontSize: 13, lineHeight: 18 }}>
-                {over ? `${formatINR(s.spent - s.limit, { decimals: false })} over your ${formatINR(s.limit, { decimals: false })} limit` : `${formatINR(s.left!, { decimals: false })} left of ${formatINR(s.limit, { decimals: false })}`}
+                {over ? `${formatINR(s.spent - s.limit)} over your ${formatINR(s.limit)} limit` : `${formatINR(s.left!)} left of ${formatINR(s.limit)}`}
               </Text>
             </View>
           </View>

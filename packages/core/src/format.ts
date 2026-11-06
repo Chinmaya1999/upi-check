@@ -4,9 +4,7 @@ import type { Paise } from './types';
 export function formatINR(paise: Paise, opts: { decimals?: boolean } = {}): string {
   const neg = paise < 0;
   const abs = Math.abs(paise);
-  // Without decimals, round to the nearest rupee (₹219.60 -> ₹220) so every screen, widget and notification agrees.
-  const roundWhole = opts.decimals === false;
-  const whole = (roundWhole ? Math.round(abs / 100) : Math.floor(abs / 100)).toString();
+  const whole = Math.floor(abs / 100).toString();
   const frac = abs % 100;
   const last3 = whole.slice(-3);
   const rest = whole.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');

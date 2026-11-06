@@ -15,13 +15,13 @@ export function AnimatedAmount({ paise, style, duration = 900 }: { paise: number
   }, [paise, reduce, duration, v]);
 
   useAnimatedReaction(
-    () => Math.round(v.value / 100) * 100, // whole rupees only, so we re-render ~once per rupee step, not per frame
+    () => Math.round(v.value), // exact paise: the count-up lands on the real amount, never a rounded one
     (cur, prev) => { if (cur !== prev) scheduleOnRN(setShown, cur); },
   );
 
   return (
     <Text style={style} accessibilityLabel={formatINR(paise)} accessibilityRole="text">
-      {formatINR(shown, { decimals: false })}
+      {formatINR(shown)}
     </Text>
   );
 }

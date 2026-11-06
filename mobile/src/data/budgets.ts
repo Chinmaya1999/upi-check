@@ -50,13 +50,13 @@ export function dueAlerts(st: BudgetStatus[], now: Date, prefs: Prefs): PendingA
       out.push({
         key: `${s.period}:${from}:over`, period: s.period, level: 'over',
         title: `⚠️ ${PERIOD_LABEL[s.period]} budget exceeded`,
-        body: `You've spent ${formatINR(s.spent, { decimals: false })} against your ${name} budget of ${formatINR(s.limit, { decimals: false })} — ${formatINR(s.spent - s.limit, { decimals: false })} over.`,
+        body: `You've spent ${formatINR(s.spent)} against your ${name} budget of ${formatINR(s.limit)} — ${formatINR(s.spent - s.limit)} over.`,
       });
     } else if (prefs.warnAt80 && s.pct >= 80) {
       out.push({
         key: `${s.period}:${from}:warn`, period: s.period, level: 'warn',
         title: `${PERIOD_LABEL[s.period]} budget at ${s.pct}%`,
-        body: `Only ${formatINR(s.limit - s.spent, { decimals: false })} left of your ${name} budget of ${formatINR(s.limit, { decimals: false })}.`,
+        body: `Only ${formatINR(s.limit - s.spent)} left of your ${name} budget of ${formatINR(s.limit)}.`,
       });
     }
   }

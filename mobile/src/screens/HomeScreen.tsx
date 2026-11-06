@@ -89,7 +89,7 @@ export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onA
             <Card style={{ flex: 1, padding: space.md + 2 }}>
               <Eyebrow>Net cash flow</Eyebrow>
               <Text style={{ color: d.today.netPaise < 0 ? colors.expense : colors.income, fontSize: 22, fontWeight: '800', marginTop: 6 }}>
-                {d.today.netPaise < 0 ? '−' : '+'}{formatINR(Math.abs(d.today.netPaise), { decimals: false })}
+                {d.today.netPaise < 0 ? '−' : '+'}{formatINR(Math.abs(d.today.netPaise))}
               </Text>
             </Card>
           </Animated.View>

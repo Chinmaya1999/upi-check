@@ -109,11 +109,11 @@ export function TransactionsScreen() {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <View>
                     <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5 }}>DEBIT</Text>
-                    <Text style={{ color: on ? '#fff' : colors.expense, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.d : sum(txns).d, { decimals: false })}</Text>
+                    <Text style={{ color: on ? '#fff' : colors.expense, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.d : sum(txns).d)}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={{ color: on ? 'rgba(255,255,255,0.7)' : colors.textMuted, fontSize: 10.5 }}>CREDIT</Text>
-                    <Text style={{ color: on ? '#fff' : colors.income, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.c : sum(txns).c, { decimals: false })}</Text>
+                    <Text style={{ color: on ? '#fff' : colors.income, fontWeight: '800', fontSize: 14 }}>{formatINR(c ? c.c : sum(txns).c)}</Text>
                   </View>
                 </View>
                 <Text style={{ color: on ? 'rgba(255,255,255,0.8)' : colors.textMuted, fontSize: 11.5, fontWeight: '600' }}>{c ? c.list.length : txns.length} transactions</Text>
@@ -175,7 +175,7 @@ export function TransactionsScreen() {
         })}
       </View>
       <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: 18, padding: 14 }}>
-        {[['Transactions', String(sections.rows.length), colors.text], ['Debit', formatINR(tot.d, { decimals: false }), colors.expense], ['Credit', formatINR(tot.c, { decimals: false }), colors.income]].map(([k, v, col]) => (
+        {[['Transactions', String(sections.rows.length), colors.text], ['Debit', formatINR(tot.d), colors.expense], ['Credit', formatINR(tot.c), colors.income]].map(([k, v, col]) => (
           <View key={k} style={{ flex: 1 }}>
             <Text style={{ color: colors.textMuted, fontSize: 11.5 }}>{k}</Text>
             <Text style={{ color: col, fontSize: 17, fontWeight: '800', marginTop: 2 }}>{v}</Text>
@@ -202,8 +202,8 @@ export function TransactionsScreen() {
         renderSectionHeader={({ section: s }) => (
           <View style={{ backgroundColor: colors.bg, paddingTop: space.md, paddingBottom: 6, flexDirection: 'row', alignItems: 'center' }}>
             <Text style={{ flex: 1, color: colors.text, fontWeight: '800', fontSize: 14.5 }}>{s.title}</Text>
-            <Text style={{ color: colors.expense, fontWeight: '700', fontSize: 12.5 }}>−{formatINR(s.d, { decimals: false })}</Text>
-            <Text style={{ color: colors.income, fontWeight: '700', fontSize: 12.5, marginLeft: 10 }}>+{formatINR(s.c, { decimals: false })}</Text>
+            <Text style={{ color: colors.expense, fontWeight: '700', fontSize: 12.5 }}>−{formatINR(s.d)}</Text>
+            <Text style={{ color: colors.income, fontWeight: '700', fontSize: 12.5, marginLeft: 10 }}>+{formatINR(s.c)}</Text>
           </View>
         )}
         renderItem={({ item, index, section }) => (
