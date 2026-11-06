@@ -23,15 +23,15 @@ const greeting = () => {
 const capitalize = (s: string) => s.trim().replace(/(^|\s)(\S)/g, (_, sp, c) => sp + c.toUpperCase());
 
 export function HomeScreen({ profile, onAdd, onSeeAll }: { profile: Profile; onAdd: () => void; onSeeAll: () => void }) {
-  const { colors } = useTheme();
+  const { colors, motion } = useTheme();
   const insets = useSafeAreaInsets();
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotion() || motion.enterMs === 0;
   const { ready, txns, dashboard: d, refresh, error, server } = useStore();
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await refresh(); setRefreshing(false); }, [refresh]);
-  const enter = (i: number) => (reduce ? undefined : FadeInDown.delay(120 + i * 80).duration(450));
+  const enter = (i: number) => (reduce ? undefined : FadeInDown.delay(120 + i * motion.staggerMs).duration(motion.enterMs));
 
   return (
     <ScrollView

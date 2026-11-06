@@ -7,12 +7,15 @@ import * as Haptics from 'expo-haptics';
 import { radius, space, useTheme } from '../theme';
 
 export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, design } = useTheme();
+  // The active design decides how cards are drawn: soft shadow, thin outline, or flat.
+  const st = design.cardStyle;
+  const shadowy = st === 'elevated' && !isDark;
   return (
     <View style={[{
       backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg,
-      borderWidth: isDark ? StyleSheet.hairlineWidth : 0, borderColor: colors.border,
-      shadowColor: colors.shadow, shadowOpacity: isDark ? 0 : 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: isDark ? 0 : 3,
+      borderWidth: st === 'outlined' ? 1 : st === 'elevated' && isDark ? StyleSheet.hairlineWidth : 0, borderColor: colors.border,
+      shadowColor: colors.shadow, shadowOpacity: shadowy ? 0.06 : 0, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: shadowy ? 3 : 0,
     }, style]}>{children}</View>
   );
 }
@@ -21,13 +24,14 @@ export function Card({ children, style }: { children: React.ReactNode; style?: S
 export function Tap({ children, onPress, style, label, disabled }: {
   children: React.ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; label?: string; disabled?: boolean;
 }) {
+  const { motion } = useTheme();
   const s = useSharedValue(1);
   const a = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
   return (
     <Pressable
       accessibilityRole="button" accessibilityLabel={label} disabled={disabled}
-      onPressIn={() => { s.value = withSpring(0.97, { damping: 18, stiffness: 300 }); }}
-      onPressOut={() => { s.value = withSpring(1, { damping: 14, stiffness: 260 }); }}
+      onPressIn={() => { s.value = withSpring(motion.tapScale, { damping: motion.damping + 2, stiffness: motion.stiffness + 80 }); }}
+      onPressOut={() => { s.value = withSpring(1, { damping: motion.damping, stiffness: motion.stiffness }); }}
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); onPress?.(); }}
     >
       <Animated.View style={[a, style, disabled && { opacity: 0.5 }]}>{children}</Animated.View>

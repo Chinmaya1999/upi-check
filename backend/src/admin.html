@@ -82,6 +82,14 @@
   .actions { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
   .kv { display:grid; grid-template-columns:130px 1fr; gap:4px 12px; margin:12px 0; } .kv dt { color:var(--muted); } .kv dd { margin:0; word-break:break-all; }
   #login { max-width:340px; margin:14vh auto; } #login h2 { margin-top:0; }
+  .dgrid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+  .dcard { background:var(--card); border:2px solid var(--line); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .dcard.active { border-color:var(--brand); box-shadow:0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
+  .dcard h4 { margin:0; font-size:16px; display:flex; align-items:center; gap:8px; } .dcard p { margin:0; color:var(--muted); font-size:13px; min-height:54px; }
+  .tags { display:flex; gap:6px; flex-wrap:wrap; }
+  .phone { width:168px; height:318px; margin:0 auto; border-radius:26px; border:5px solid #1b1b1f; position:relative; overflow:hidden; font-family:system-ui,sans-serif; flex:none; }
+  .phone .pad { padding:12px 10px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; } .seg button { border:0; background:var(--card); padding:6px 12px; cursor:pointer; } .seg button.on { background:var(--brand); color:var(--brand-ink); font-weight:600; }
   .empty { padding:30px; text-align:center; color:var(--muted); }
   .secret { background:var(--warn-bg); color:var(--warn); border-radius:8px; padding:10px; margin:10px 0; }
   @media (max-width:640px) { main { padding:12px; } header { padding:0 10px; gap:8px; } .hbar { grid-template-columns:80px 1fr 70px; } }
@@ -167,8 +175,8 @@ function showLogin() {
 }
 
 // ───────── shell ─────────
-const TABS = [['overview', 'Overview'], ['users', 'Users'], ['transactions', 'Transactions'], ['sessions', 'Sessions'], ['controls', 'App controls'], ['audit', 'Audit log']];
-const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, controls: viewControls, audit: viewAudit };
+const TABS = [['overview', 'Overview'], ['users', 'Users'], ['transactions', 'Transactions'], ['sessions', 'Sessions'], ['design', 'App design'], ['controls', 'App controls'], ['audit', 'Audit log']];
+const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, design: viewDesign, controls: viewControls, audit: viewAudit };
 let tab = 'overview';
 
 function boot() {
@@ -348,6 +356,66 @@ async function viewSessions(main) {
         h('td', {}, h('a', { href: '#', onclick: (e) => { e.preventDefault(); userDialog(s.user_id, () => go('sessions')); } }, s.name)), h('td', { class: 'mono' }, s.contact),
         h('td', {}, s.created_at ? when(s.created_at) : 'before tracking'), h('td', {}, when(s.expires_at)),
         h('td', {}, h('button', { class: 'btn sm danger', onclick: async () => { await act(() => api('DELETE', '/sessions/' + s.id), 'Signed out'); go('sessions'); } }, 'Sign out')))))) : h('div', { class: 'empty' }, 'No active sessions')));
+}
+
+// ───────── app design: ten complete looks, switched live ─────────
+function phonePreview(d, dark) {
+  const sf = dark ? d.dark : d.light;
+  const brand = dark ? d.brand : (d.brandLight || d.brand);
+  const lum = (hex) => { const n = parseInt(hex.slice(1), 16); const f = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); }; return .2126 * f(n >> 16 & 255) + .7152 * f(n >> 8 & 255) + .0722 * f(n & 255); };
+  const onBrand = lum(brand) > .4 ? '#0B0F14' : '#fff';
+  const k = .55; // preview scale for corner sizes
+  const card = (extra) => Object.assign({ background: sf.card, borderRadius: d.shape.card * k + 'px',
+    border: d.cardStyle === 'outlined' ? '1px solid ' + sf.border : (d.cardStyle === 'elevated' && dark ? '1px solid ' + sf.border : '0'),
+    boxShadow: d.cardStyle === 'elevated' && !dark ? '0 4px 12px rgba(0,0,0,.10)' : 'none' }, extra || {});
+  const st = (el, o) => { Object.assign(el.style, o); return el; };
+  const hero = st(h('div', {}, h('div', { style: 'font-size:8px;opacity:.75' }, 'You spent'), h('div', { style: 'font-size:21px;font-weight:800;margin:2px 0' }, '₹1,240.50'), h('div', { style: 'font-size:8px;opacity:.75' }, '↘ 18% less than yesterday')),
+    { background: 'linear-gradient(135deg,' + d.hero.colors.join(',') + ')', color: '#fff', borderRadius: (d.shape.card + 4) * k + 'px', padding: '12px', position: 'relative', overflow: 'hidden' });
+  d.hero.orbs.forEach((c, i) => hero.append(st(h('i', {}), { position: 'absolute', width: [54, 40, 22][i] + 'px', height: [54, 40, 22][i] + 'px', borderRadius: '50%', background: c, right: [-14, 'auto', 30][i] + 'px', left: [null, -10, null][i] != null ? '-10px' : 'auto', top: i === 0 ? '-14px' : 'auto', bottom: i ? '-10px' : 'auto' })));
+  const mini = (label, val, col) => st(h('div', {}, h('div', { style: `font-size:7px;color:${sf.textMuted};letter-spacing:.5px` }, label), h('div', { style: `font-size:12px;font-weight:800;color:${col};white-space:nowrap` }, val)), Object.assign(card(), { flex: '1', padding: '7px' }));
+  const bars = st(h('div', {}, [30, 52, 22, 64, 40, 70, 46].map((v, i) => st(h('i', {}), { flex: '1', height: v + '%', background: i === 5 ? brand : sf.cardAlt, borderRadius: Math.max(2, d.shape.control * .25) + 'px' }))),
+    { display: 'flex', alignItems: 'flex-end', gap: '4px', height: '38px' });
+  const body = st(h('div', { class: 'pad' },
+    h('div', { style: `font-size:8px;color:${sf.textMuted}` }, 'Good Afternoon'), h('div', { style: `font-size:13px;font-weight:800;margin-bottom:7px;color:${sf.text}` }, 'Chinmaya'),
+    hero, st(h('div', {}, mini('INCOME', '₹0', d.income), mini('NET', '−₹1,240', d.expense)), { display: 'flex', gap: '6px', margin: '7px 0' }),
+    st(h('div', {}, h('div', { style: `font-size:7px;color:${sf.textMuted};margin-bottom:4px` }, 'LAST 7 DAYS'), bars), Object.assign(card(), { padding: '8px' }))), {});
+  const dots = [0, 1, 2, 3, 4].map((i) => st(h('i', {}), { width: '12px', height: '12px', borderRadius: '4px', background: i === 0 ? brand : sf.textMuted, opacity: i === 0 ? 1 : .45, display: 'block' }));
+  const common = { position: 'absolute', display: 'flex', justifyContent: 'space-around', alignItems: 'center', background: sf.card, height: '34px' };
+  const bar = st(h('div', {}, dots), d.tabBar === 'docked'
+    ? Object.assign(common, { left: '0', right: '0', bottom: '0', borderTop: '1px solid ' + sf.border, borderRadius: Math.max(0, d.shape.tab * k) + 'px ' + Math.max(0, d.shape.tab * k) + 'px 0 0' })
+    : d.tabBar === 'pill'
+    ? Object.assign(common, { left: '16px', right: '16px', bottom: '10px', borderRadius: '99px', border: '1px solid ' + sf.border, boxShadow: '0 4px 10px rgba(0,0,0,.18)' })
+    : Object.assign(common, { left: '8px', right: '8px', bottom: '8px', borderRadius: d.shape.tab * k + 'px', border: dark ? '1px solid ' + sf.border : '0', boxShadow: '0 4px 12px rgba(0,0,0,.18)' }));
+  void onBrand;
+  return st(h('div', { class: 'phone' }, body, bar), { background: sf.bg });
+}
+
+async function viewDesign(main) {
+  const r = await api('GET', '/designs');
+  let dark = true;
+  const grid = h('div', { class: 'dgrid' });
+  const motionSel = h('select', { 'aria-label': 'Animation style', onchange: async (e) => { await act(() => api('PUT', '/config', { uiMotion: e.target.value }), 'Animation style updated for all phones'); go('design'); } },
+    h('option', { value: '' }, 'Design default'), r.motions.map((m) => h('option', { value: m.id, selected: r.motion === m.id }, m.label)));
+  const draw = () => grid.replaceChildren(...r.designs.map((d) => {
+    const on = d.id === r.active;
+    return h('div', { class: 'dcard' + (on ? ' active' : '') },
+      phonePreview(d, dark),
+      h('h4', {}, d.name, on ? pill('Live', 'ok') : null),
+      h('p', {}, d.tagline),
+      h('div', { class: 'tags' }, pill(d.motion, 'gray'), pill(d.tabBar + ' bar', 'gray'), pill(d.cardStyle + ' cards', 'gray')),
+      h('button', { class: 'btn ' + (on ? '' : 'primary'), disabled: on, onclick: async () => {
+        if (!(await confirmDlg('Switch the app to "' + d.name + '"?', 'Every phone running the app changes to this design within about 20 seconds. No update needed.', 'Apply to app'))) return;
+        if (await act(() => api('PUT', '/config', { uiDesign: d.id }), d.name + ' is now live') !== undefined) go('design');
+      } }, on ? 'Currently live' : 'Apply to app'));
+  }));
+  const seg = h('div', { class: 'seg' }, h('button', { class: 'on', onclick: (e) => { dark = true; sync(e.target); } }, 'Dark'), h('button', { onclick: (e) => { dark = false; sync(e.target); } }, 'Light'));
+  const sync = (btn) => { seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === btn)); draw(); };
+  draw();
+  main.replaceChildren(
+    h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'App design'), h('span', { class: 'grow' }), h('span', { class: 'muted' }, 'Preview as'), seg,
+      h('label', { class: 'muted' }, 'Animation ', motionSel)),
+    h('p', { class: 'muted', style: 'margin-top:0' }, 'Pick one of 10 designs. It changes colours, corner shapes, card and tab-bar style, the home banner and the animation feel, live on every phone, with no app update. Users can still choose Light, Dark or System in their own Profile.'),
+    grid);
 }
 
 // ───────── app controls ─────────

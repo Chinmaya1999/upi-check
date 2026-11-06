@@ -1,7 +1,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
+import { resolveDesign, summarizeDay, summarizeDayByApp, type Transaction } from '../../packages/core/src/index';
 import { createAdmin } from './admin';
 
 const PORT = Number(process.env.PORT ?? 80);
@@ -108,7 +108,7 @@ function authUser(req: http.IncomingMessage) {
 }
 
 // Admin-controlled runtime settings (see admin.ts). Read per request: one tiny indexed lookup.
-const CONFIG_DEFAULTS = { registrationsOpen: true, syncEnabled: true, maintenanceMode: false, maintenanceMessage: '', announcement: '', minAppVersion: '' };
+const CONFIG_DEFAULTS = { registrationsOpen: true, syncEnabled: true, maintenanceMode: false, maintenanceMessage: '', announcement: '', minAppVersion: '', uiDesign: 'aurora', uiMotion: '' };
 type AppConfig = typeof CONFIG_DEFAULTS;
 function getConfig(): AppConfig {
   const out: Record<string, unknown> = { ...CONFIG_DEFAULTS };
@@ -147,7 +147,7 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse) {
   switch (`${req.method} ${url.pathname}`) {
     case 'GET /config': {
       const c = getConfig();
-      return send(res, 200, { maintenanceMode: c.maintenanceMode, maintenanceMessage: c.maintenanceMessage, announcement: c.announcement, minAppVersion: c.minAppVersion, registrationsOpen: c.registrationsOpen });
+      return send(res, 200, { maintenanceMode: c.maintenanceMode, maintenanceMessage: c.maintenanceMessage, announcement: c.announcement, minAppVersion: c.minAppVersion, registrationsOpen: c.registrationsOpen, design: resolveDesign(c.uiDesign, c.uiMotion) });
     }
 
     case 'GET /':

@@ -1,6 +1,7 @@
 import type http from 'node:http';
 import crypto from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
+import { DESIGNS, MOTIONS, MOTION_LABELS, resolveDesign } from '../../packages/core/src/index';
 import adminHtml from './admin.html';
 
 // Admin dashboard: served at /admin, JSON API at /admin/api/*.
@@ -173,7 +174,7 @@ export function createAdmin(ctx: Ctx) {
 
   const CONFIG_TYPES: Record<string, 'boolean' | 'string'> = {
     registrationsOpen: 'boolean', syncEnabled: 'boolean', maintenanceMode: 'boolean',
-    maintenanceMessage: 'string', announcement: 'string', minAppVersion: 'string',
+    maintenanceMessage: 'string', announcement: 'string', minAppVersion: 'string', uiDesign: 'string', uiMotion: 'string',
   };
 
   async function api(req: http.IncomingMessage, res: http.ServerResponse, url: URL, ip: string) {
@@ -314,6 +315,10 @@ export function createAdmin(ctx: Ctx) {
       return send(res, 200, { revoked: n });
     }
 
+    if (method === 'GET' && path === '/designs') {
+      const c = getConfig();
+      return send(res, 200, { designs: DESIGNS, motions: Object.entries(MOTIONS).map(([id, spec]) => ({ id, label: MOTION_LABELS[id as keyof typeof MOTIONS], spec })), active: resolveDesign(c.uiDesign as string, c.uiMotion as string).id, motion: c.uiMotion });
+    }
     if (method === 'GET' && path === '/config') return send(res, 200, { config: getConfig() });
     if (method === 'PUT' && path === '/config') {
       const b = await readJson(req);
@@ -322,6 +327,8 @@ export function createAdmin(ctx: Ctx) {
         const type = CONFIG_TYPES[k];
         if (!type) throw new HttpError(400, `Unknown setting: ${k}`);
         if (typeof v !== type) throw new HttpError(400, `${k} must be a ${type}`);
+        if (k === 'uiDesign' && !DESIGNS.some((d) => d.id === v)) throw new HttpError(400, 'Unknown design');
+        if (k === 'uiMotion' && v !== '' && !(v as string in MOTIONS)) throw new HttpError(400, 'Unknown animation style');
         if (type === 'string' && (v as string).length > 500) throw new HttpError(400, `${k} is too long (max 500 chars)`);
         changes[k] = type === 'string' ? (v as string).trim() : v;
       }
