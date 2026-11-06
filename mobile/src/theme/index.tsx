@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState, useColorScheme } from 'react-native';
-import { MOTIONS, contrastOn, resolveDesign, type MotionSpec, type ResolvedDesign } from '@upi/core';
+import { LAYOUT_DEFAULT, MOTIONS, contrastOn, resolveDesign, type MotionSpec, type ResolvedDesign } from '@upi/core';
 import * as db from '../data/db';
 import { API_URL } from '../config';
 
@@ -23,10 +23,14 @@ export function paletteFor(d: ResolvedDesign, isDark: boolean): Palette {
   };
 }
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+const BASE_SPACE = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+/** Mutable on purpose, like `radius`: the design's density (compact / cozy / roomy) rescales it. */
+export const space = { ...BASE_SPACE };
 /** Mutable on purpose: the active design rewrites the corner sizes, and every themed screen re-renders when it does. */
 export const radius = { sm: 10, md: 16, lg: 24, pill: 999 };
 function applyShape(d: ResolvedDesign) {
+  const k = d.density === 'compact' ? 0.78 : d.density === 'roomy' ? 1.2 : 1;
+  (Object.keys(BASE_SPACE) as (keyof typeof BASE_SPACE)[]).forEach((key) => { space[key] = Math.round(BASE_SPACE[key] * k); });
   radius.lg = d.shape.card;
   radius.md = d.shape.control;
   radius.sm = Math.max(4, Math.round(d.shape.control * 0.65));
@@ -38,9 +42,12 @@ function validDesign(x: any): x is ResolvedDesign {
   return !!x && typeof x.id === 'string' && typeof x.brand === 'string' && okSurface(x.dark) && okSurface(x.light)
     && Array.isArray(x.hero?.colors) && x.hero.colors.length === 3 && Array.isArray(x.hero?.orbs) && x.hero.orbs.length === 3
     && typeof x.shape?.card === 'number' && typeof x.shape?.control === 'number' && typeof x.shape?.tab === 'number'
-    && ['elevated', 'outlined', 'flat'].includes(x.cardStyle) && ['floating', 'docked', 'pill'].includes(x.tabBar)
+    && ['elevated', 'outlined', 'flat', 'brutal'].includes(x.cardStyle) && ['floating', 'docked', 'pill', 'icons', 'underline'].includes(x.tabBar)
     && typeof x.motionSpec?.damping === 'number' && typeof x.motionSpec?.enterMs === 'number';
 }
+
+/** Older servers / cached designs may lack the structural options: fill them with the classic defaults. */
+const withLayout = (d: ResolvedDesign): ResolvedDesign => ({ ...LAYOUT_DEFAULT, ...d });
 
 type Mode = 'system' | 'light' | 'dark';
 interface ThemeCtx { colors: Palette; isDark: boolean; mode: Mode; setMode: (m: Mode) => void; design: ResolvedDesign; motion: MotionSpec }
@@ -57,7 +64,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     let alive = true;
     const adopt = (d: ResolvedDesign) => { applyShape(d); setDesign((cur) => (JSON.stringify(cur) === JSON.stringify(d) ? cur : d)); };
     (async () => {
-      try { const c = await db.getMeta('design'); if (c && alive) { const d = JSON.parse(c); if (validDesign(d)) adopt(d); } } catch { /* use default */ }
+      try { const c = await db.getMeta('design'); if (c && alive) { const d = JSON.parse(c); if (validDesign(d)) adopt(withLayout(d)); } } catch { /* use default */ }
     })();
     const poll = async () => {
       try {
@@ -66,7 +73,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const r = await fetch(`${API_URL}/config`, { signal: ctl.signal, headers: { 'Cache-Control': 'no-cache' } });
         clearTimeout(t);
         const j = await r.json();
-        if (alive && validDesign(j?.design)) { adopt(j.design); db.setMeta('design', JSON.stringify(j.design)).catch(() => {}); }
+        if (alive && validDesign(j?.design)) { adopt(withLayout(j.design)); db.setMeta('design', JSON.stringify(j.design)).catch(() => {}); }
       } catch { /* offline: keep what we have */ }
     };
     poll();

@@ -11,12 +11,35 @@ export function Card({ children, style }: { children: React.ReactNode; style?: S
   // The active design decides how cards are drawn: soft shadow, thin outline, or flat.
   const st = design.cardStyle;
   const shadowy = st === 'elevated' && !isDark;
+  const brutal = st === 'brutal';
   return (
     <View style={[{
       backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg,
-      borderWidth: st === 'outlined' ? 1 : st === 'elevated' && isDark ? StyleSheet.hairlineWidth : 0, borderColor: colors.border,
-      shadowColor: colors.shadow, shadowOpacity: shadowy ? 0.06 : 0, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: shadowy ? 3 : 0,
+      borderWidth: brutal ? 2 : st === 'outlined' ? 1 : st === 'elevated' && isDark ? StyleSheet.hairlineWidth : 0, borderColor: brutal ? colors.text : colors.border,
+      shadowColor: brutal ? colors.text : colors.shadow, shadowOpacity: brutal ? 1 : shadowy ? 0.06 : 0, shadowRadius: brutal ? 0 : 16,
+      shadowOffset: brutal ? { width: 4, height: 4 } : { width: 0, height: 6 }, elevation: shadowy ? 3 : 0,
     }, style]}>{children}</View>
+  );
+}
+
+/** One transaction row inside a list, drawn the way the active design wants: grouped card, own card, or plain. */
+export function TxnShell({ index, count, children }: { index: number; count: number; children: React.ReactNode }) {
+  const { colors, design } = useTheme();
+  const first = index === 0, last = index === count - 1;
+  if (design.rows === 'flat') {
+    return <View style={{ borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>{children}</View>;
+  }
+  if (design.rows === 'cards') {
+    const brutal = design.cardStyle === 'brutal';
+    return (
+      <View style={{ backgroundColor: colors.card, borderRadius: radius.md + 2, paddingHorizontal: space.md, marginBottom: space.sm,
+        borderWidth: brutal ? 2 : design.cardStyle === 'outlined' ? 1 : 0, borderColor: brutal ? colors.text : colors.border }}>{children}</View>
+    );
+  }
+  return (
+    <View style={{ backgroundColor: colors.card, paddingHorizontal: space.md,
+      borderTopLeftRadius: first ? radius.lg - 4 : 0, borderTopRightRadius: first ? radius.lg - 4 : 0,
+      borderBottomLeftRadius: last ? radius.lg - 4 : 0, borderBottomRightRadius: last ? radius.lg - 4 : 0 }}>{children}</View>
   );
 }
 

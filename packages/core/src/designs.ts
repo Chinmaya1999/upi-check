@@ -7,8 +7,18 @@ export interface Surface {
   bg: string; card: string; cardAlt: string; text: string; textMuted: string; border: string; skeleton: string; shadow: string;
 }
 export type MotionName = 'smooth' | 'bouncy' | 'snappy' | 'calm' | 'off';
-export type CardStyle = 'elevated' | 'outlined' | 'flat';
-export type TabBarStyle = 'floating' | 'docked' | 'pill';
+export type CardStyle = 'elevated' | 'outlined' | 'flat' | 'brutal';
+export type TabBarStyle = 'floating' | 'docked' | 'pill' | 'icons' | 'underline';
+/** How the Home screen is composed (not just coloured): the structure of the page itself. */
+export type HomeLayout = 'classic' | 'bento' | 'minimal' | 'compact' | 'focus';
+/** The big "You spent today" banner: gradient card, flat colour card, bare poster type, or a payment-card look. */
+export type HeroStyle = 'gradient' | 'solid' | 'poster' | 'card';
+/** Transaction lists: one grouped card, a separate card per row, or plain rows with hairlines. */
+export type RowStyle = 'grouped' | 'cards' | 'flat';
+/** Overall spacing: compact packs more on screen, roomy breathes. */
+export type Density = 'compact' | 'cozy' | 'roomy';
+export interface Layout { home: HomeLayout; heroStyle: HeroStyle; rows: RowStyle; density: Density }
+export const LAYOUT_DEFAULT: Layout = { home: 'classic', heroStyle: 'gradient', rows: 'grouped', density: 'cozy' };
 
 export interface MotionSpec {
   /** spring damping / stiffness for taps and tab changes (higher damping = less bounce) */
@@ -34,7 +44,7 @@ export const MOTION_LABELS: Record<MotionName, string> = {
   smooth: 'Smooth', bouncy: 'Bouncy', snappy: 'Snappy', calm: 'Calm', off: 'No animation',
 };
 
-export interface Design {
+export interface Design extends Layout {
   id: string;
   name: string;
   tagline: string;
@@ -53,7 +63,8 @@ export interface Design {
 
 const status = { income: '#12B886', expense: '#F06565', warning: '#F59F00' };
 
-export const DESIGNS: Design[] = [
+type BaseDesign = Omit<Design, keyof Layout> & Partial<Layout>;
+const BASE: BaseDesign[] = [
   {
     id: 'aurora', name: 'Aurora', tagline: 'The signature look: deep navy, glowing green, floating tab bar.',
     brand: '#12B886', ...status,
@@ -135,6 +146,102 @@ export const DESIGNS: Design[] = [
     shape: { card: 22, control: 14, tab: 26 }, cardStyle: 'elevated', tabBar: 'pill', motion: 'calm',
   },
 ];
+
+/** Ten more designs that differ in structure, not just colour. */
+const STRUCTURAL: BaseDesign[] = [
+  {
+    id: 'bento', name: 'Bento Grid', tagline: 'Home becomes a grid of colourful tiles of different sizes. Each number gets its own block.',
+    brand: '#FFB020', brandLight: '#D97706', ...status,
+    dark: { bg: '#0D0F14', card: '#171A21', cardAlt: '#20242D', text: '#F5F6F8', textMuted: '#8C93A3', border: '#262B36', skeleton: '#1D2129', shadow: '#000000' },
+    light: { bg: '#F2F0EB', card: '#FFFFFF', cardAlt: '#E9E5DC', text: '#1D1B16', textMuted: '#7A7566', border: '#E2DDD0', skeleton: '#E6E1D5', shadow: '#5A4B1A' },
+    hero: { colors: ['#B45309', '#F59E0B', '#FCD34D'], orbs: ['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.12)', 'rgba(255,255,255,0.14)'] },
+    shape: { card: 22, control: 14, tab: 24 }, cardStyle: 'flat', tabBar: 'icons', motion: 'bouncy',
+    home: 'bento', heroStyle: 'solid', rows: 'cards', density: 'cozy',
+  },
+  {
+    id: 'poster', name: 'Poster', tagline: 'Giant typography, no boxes. The numbers are the design. Plain rows, underline tabs.',
+    brand: '#FFE14D', brandLight: '#111111', ...status,
+    dark: { bg: '#0A0A0A', card: '#141414', cardAlt: '#1C1C1C', text: '#FFFFFF', textMuted: '#8E8E8E', border: '#262626', skeleton: '#1A1A1A', shadow: '#000000' },
+    light: { bg: '#FFFDF5', card: '#FFFFFF', cardAlt: '#F4F0DF', text: '#0B0B0B', textMuted: '#707070', border: '#E8E3CF', skeleton: '#EFEAD8', shadow: '#000000' },
+    hero: { colors: ['#0A0A0A', '#161616', '#222222'], orbs: ['rgba(255,225,77,0.10)', 'rgba(255,225,77,0.06)', 'rgba(255,225,77,0.08)'] },
+    shape: { card: 0, control: 8, tab: 0 }, cardStyle: 'flat', tabBar: 'underline', motion: 'snappy',
+    home: 'minimal', heroStyle: 'poster', rows: 'flat', density: 'roomy',
+  },
+  {
+    id: 'terminal', name: 'Terminal', tagline: 'Dense, data-first and fast. Everything in one compact summary, tight spacing, hairline rows.',
+    brand: '#3DFF7A', brandLight: '#0B7A33', ...status,
+    dark: { bg: '#050805', card: '#0B110B', cardAlt: '#122012', text: '#D8FFE4', textMuted: '#6FA383', border: '#16301B', skeleton: '#0F1A10', shadow: '#000000' },
+    light: { bg: '#F3F8F3', card: '#FFFFFF', cardAlt: '#E4EEE4', text: '#0F2414', textMuted: '#5E7A66', border: '#D2E1D4', skeleton: '#DCE8DD', shadow: '#0F2414' },
+    hero: { colors: ['#04120A', '#0B3B1D', '#0F6B33'], orbs: ['rgba(61,255,122,0.16)', 'rgba(61,255,122,0.10)', 'rgba(61,255,122,0.12)'] },
+    shape: { card: 4, control: 4, tab: 0 }, cardStyle: 'outlined', tabBar: 'underline', motion: 'snappy',
+    home: 'compact', heroStyle: 'solid', rows: 'flat', density: 'compact',
+  },
+  {
+    id: 'focus', name: 'Focus Ring', tagline: 'One big glowing ring in the middle of the screen. Calm, centred and uncluttered.',
+    brand: '#2DD4BF', brandLight: '#0F766E', ...status,
+    dark: { bg: '#061312', card: '#0D1E1D', cardAlt: '#132928', text: '#E6FBF8', textMuted: '#86B5B0', border: '#17332F', skeleton: '#102423', shadow: '#000000' },
+    light: { bg: '#F0FAF8', card: '#FFFFFF', cardAlt: '#DFF3F0', text: '#0B2523', textMuted: '#5A8580', border: '#CBE7E3', skeleton: '#D3EBE7', shadow: '#0F766E' },
+    hero: { colors: ['#052E2B', '#0F766E', '#2DD4BF'], orbs: ['rgba(94,234,212,0.26)', 'rgba(45,212,191,0.20)', 'rgba(204,251,241,0.18)'] },
+    shape: { card: 28, control: 18, tab: 30 }, cardStyle: 'flat', tabBar: 'icons', motion: 'calm',
+    home: 'focus', heroStyle: 'poster', rows: 'grouped', density: 'roomy',
+  },
+  {
+    id: 'wallet', name: 'Wallet Card', tagline: 'The banner is a real payment card with a chip. Every transaction sits on its own card.',
+    brand: '#34D399', brandLight: '#047857', ...status,
+    dark: { bg: '#0E1210', card: '#161C19', cardAlt: '#1E2622', text: '#F0F6F3', textMuted: '#8EA399', border: '#26302B', skeleton: '#1A221E', shadow: '#000000' },
+    light: { bg: '#F2F5F3', card: '#FFFFFF', cardAlt: '#E7EDE9', text: '#112018', textMuted: '#667A70', border: '#DCE5DF', skeleton: '#E1E9E4', shadow: '#112018' },
+    hero: { colors: ['#052E1F', '#0F5E43', '#C9A227'], orbs: ['rgba(250,204,21,0.26)', 'rgba(16,185,129,0.24)', 'rgba(255,255,255,0.14)'] },
+    shape: { card: 22, control: 14, tab: 26 }, cardStyle: 'elevated', tabBar: 'floating', motion: 'smooth',
+    home: 'classic', heroStyle: 'card', rows: 'cards', density: 'cozy',
+  },
+  {
+    id: 'newsprint', name: 'Newsprint', tagline: 'Cream paper, sharp corners and ink-black type. Reads like a financial newspaper.',
+    brand: '#E5484D', brandLight: '#C1121F', ...status,
+    dark: { bg: '#15120E', card: '#1D1913', cardAlt: '#26211A', text: '#F3EBDD', textMuted: '#A39A87', border: '#36301F', skeleton: '#211C15', shadow: '#000000' },
+    light: { bg: '#F6F0E2', card: '#FBF7EC', cardAlt: '#EDE5D0', text: '#1A1710', textMuted: '#756E5A', border: '#DDD3B9', skeleton: '#E6DEC6', shadow: '#3A311A' },
+    hero: { colors: ['#1A1710', '#3A2F1A', '#7A5C1E'], orbs: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.08)'] },
+    shape: { card: 2, control: 2, tab: 0 }, cardStyle: 'outlined', tabBar: 'underline', motion: 'calm',
+    home: 'minimal', heroStyle: 'poster', rows: 'flat', density: 'cozy',
+  },
+  {
+    id: 'candy', name: 'Candy Pop', tagline: 'Playful pastel colours, super-round shapes, springy bounces and chunky spacing.',
+    brand: '#FF5CA8', brandLight: '#E11D74', ...status,
+    dark: { bg: '#1A1030', card: '#271A47', cardAlt: '#33235A', text: '#FFF1FA', textMuted: '#C9A9DD', border: '#3F2C6E', skeleton: '#2E2050', shadow: '#000000' },
+    light: { bg: '#FFF4FB', card: '#FFFFFF', cardAlt: '#FFE4F3', text: '#3B1140', textMuted: '#9A6B9F', border: '#FAD1EA', skeleton: '#FBDCEE', shadow: '#C2188D' },
+    hero: { colors: ['#6D28D9', '#DB2777', '#FB923C'], orbs: ['rgba(253,224,71,0.34)', 'rgba(125,211,252,0.30)', 'rgba(255,255,255,0.24)'] },
+    shape: { card: 34, control: 22, tab: 36 }, cardStyle: 'elevated', tabBar: 'icons', motion: 'bouncy',
+    home: 'classic', heroStyle: 'gradient', rows: 'cards', density: 'roomy',
+  },
+  {
+    id: 'oled', name: 'OLED Lines', tagline: 'True black with hairline outlines and a cyan glow. Compact, crisp and battery-friendly.',
+    brand: '#22D3EE', brandLight: '#0E7490', ...status,
+    dark: { bg: '#000000', card: '#000000', cardAlt: '#0F1318', text: '#F1F5F9', textMuted: '#7D8795', border: '#1E2630', skeleton: '#0F1318', shadow: '#000000' },
+    light: { bg: '#FFFFFF', card: '#FFFFFF', cardAlt: '#F1F5F9', text: '#0B1220', textMuted: '#64748B', border: '#E2E8F0', skeleton: '#EDF1F6', shadow: '#0B1220' },
+    hero: { colors: ['#000000', '#031A22', '#0B5A6B'], orbs: ['rgba(34,211,238,0.20)', 'rgba(34,211,238,0.10)', 'rgba(125,211,252,0.14)'] },
+    shape: { card: 12, control: 10, tab: 0 }, cardStyle: 'outlined', tabBar: 'docked', motion: 'snappy',
+    home: 'compact', heroStyle: 'solid', rows: 'flat', density: 'compact',
+  },
+  {
+    id: 'zen', name: 'Zen Garden', tagline: 'Sage greens, lots of whitespace and slow, soft transitions. Minimal and peaceful.',
+    brand: '#6BA58A', brandLight: '#3F7A5E', ...status,
+    dark: { bg: '#101613', card: '#18201C', cardAlt: '#202A25', text: '#EAF2EE', textMuted: '#92A89D', border: '#2A3731', skeleton: '#1C2621', shadow: '#000000' },
+    light: { bg: '#F4F7F4', card: '#FFFFFF', cardAlt: '#E8EFEA', text: '#18241E', textMuted: '#6A7F73', border: '#DCE6DF', skeleton: '#E1EAE4', shadow: '#2F4A3C' },
+    hero: { colors: ['#1F3A2E', '#3F7A5E', '#A7C4B1'], orbs: ['rgba(255,255,255,0.20)', 'rgba(255,255,255,0.12)', 'rgba(255,255,255,0.16)'] },
+    shape: { card: 26, control: 16, tab: 32 }, cardStyle: 'flat', tabBar: 'pill', motion: 'calm',
+    home: 'minimal', heroStyle: 'solid', rows: 'cards', density: 'roomy',
+  },
+  {
+    id: 'bold', name: 'Bold Blocks', tagline: 'Thick black outlines, loud yellow and hard edges. Unapologetically graphic.',
+    brand: '#FFD60A', brandLight: '#E6B800', ...status,
+    dark: { bg: '#111111', card: '#1B1B1B', cardAlt: '#262626', text: '#FFFFFF', textMuted: '#A3A3A3', border: '#FFFFFF', skeleton: '#262626', shadow: '#FFD60A' },
+    light: { bg: '#FFF7CC', card: '#FFFFFF', cardAlt: '#FFE98A', text: '#0A0A0A', textMuted: '#4D4D4D', border: '#0A0A0A', skeleton: '#FFE98A', shadow: '#0A0A0A' },
+    hero: { colors: ['#FFD60A', '#FFD60A', '#FFC300'], orbs: ['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.06)', 'rgba(0,0,0,0.08)'] },
+    shape: { card: 6, control: 4, tab: 0 }, cardStyle: 'brutal', tabBar: 'docked', motion: 'snappy',
+    home: 'bento', heroStyle: 'solid', rows: 'cards', density: 'cozy',
+  },
+];
+
+export const DESIGNS: Design[] = [...BASE, ...STRUCTURAL].map((d) => ({ ...LAYOUT_DEFAULT, ...d }));
 
 export const DEFAULT_DESIGN_ID = 'aurora';
 export const designIds = () => DESIGNS.map((d) => d.id);

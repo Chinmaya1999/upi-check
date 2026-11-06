@@ -7,7 +7,7 @@ import { addDays, dayKeyOf, formatINR, type Transaction } from '@upi/core';
 import { weekStart } from '../data/budgets';
 import { useTheme, space, radius } from '../theme';
 import { useStore } from '../data/store';
-import { Card, Tap } from '../components/ui';
+import { Card, Tap, TxnShell } from '../components/ui';
 import { TransactionRow } from '../components/TransactionRow';
 import { BankBadge } from '../components/BankBadge';
 import { TxnDetail } from '../components/TxnDetail';
@@ -207,11 +207,9 @@ export function TransactionsScreen() {
           </View>
         )}
         renderItem={({ item, index, section }) => (
-          <View style={{ backgroundColor: colors.card, paddingHorizontal: space.md,
-            borderTopLeftRadius: index === 0 ? 20 : 0, borderTopRightRadius: index === 0 ? 20 : 0,
-            borderBottomLeftRadius: index === section.data.length - 1 ? 20 : 0, borderBottomRightRadius: index === section.data.length - 1 ? 20 : 0 }}>
+          <TxnShell index={index} count={section.data.length}>
             <TransactionRow t={item} index={index} onPress={setOpen} />
-          </View>
+          </TxnShell>
         )}
       />
       <TxnDetail t={open} onClose={() => setOpen(null)} onDelete={open?.sources.length === 1 && open.sources[0] === 'manual' ? async () => { await removeTxn(open.id); setOpen(null); } : undefined} />

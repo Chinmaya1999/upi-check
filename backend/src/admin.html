@@ -7,92 +7,138 @@
 <title>Paisa Admin</title>
 <style>
   :root {
-    --bg:#f5f6f8; --card:#fff; --ink:#15181e; --muted:#667085; --line:#e4e7ec; --brand:#5b3df5; --brand-ink:#fff;
-    --ok:#067647; --ok-bg:#dcfae6; --warn:#b54708; --warn-bg:#fef0c7; --bad:#b42318; --bad-bg:#fee4e2; --hover:#f0f2f5;
+    --bg:#f4f5fb; --card:#ffffff; --ink:#141629; --muted:#6a6f8a; --line:#e6e8f2; --hover:#f0f1fa;
+    --brand:#6c4cf5; --brand2:#a855f7; --brand-ink:#ffffff; --brand-soft:#efeaff;
+    --ok:#067647; --ok-bg:#dcfae6; --warn:#b54708; --warn-bg:#fef0c7; --bad:#b42318; --bad-bg:#fee4e2; --info:#175cd3; --info-bg:#e0edff;
+    --shadow:0 1px 2px rgba(20,22,41,.05), 0 6px 20px rgba(20,22,41,.06);
+    --side:#0e1022; --side-ink:#c5c9e6; --side-muted:#7e83a8; --side-line:rgba(255,255,255,.07);
+    color-scheme: light;
   }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#0f1115; --card:#181b22; --ink:#eceef2; --muted:#9aa3b2; --line:#2a2f3a; --brand:#8b78ff; --brand-ink:#0f1115;
-      --ok:#6ce9a6; --ok-bg:#073d28; --warn:#fec84b; --warn-bg:#47300a; --bad:#fda29b; --bad-bg:#4a1410; --hover:#1f232c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#0b0d1a; --card:#141730; --ink:#eceefb; --muted:#9298b8; --line:#232748; --hover:#1b1f3d;
+    --brand:#8b73ff; --brand2:#c084fc; --brand-ink:#0b0d1a; --brand-soft:#241f4d;
+    --ok:#6ce9a6; --ok-bg:#073d28; --warn:#fec84b; --warn-bg:#47300a; --bad:#fda29b; --bad-bg:#4a1410; --info:#84b8ff; --info-bg:#10264d;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35); --side:#080a17; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg:#0b0d1a; --card:#141730; --ink:#eceefb; --muted:#9298b8; --line:#232748; --hover:#1b1f3d;
+    --brand:#8b73ff; --brand2:#c084fc; --brand-ink:#0b0d1a; --brand-soft:#241f4d;
+    --ok:#6ce9a6; --ok-bg:#073d28; --warn:#fec84b; --warn-bg:#47300a; --bad:#fda29b; --bad-bg:#4a1410; --info:#84b8ff; --info-bg:#10264d;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35); --side:#080a17; color-scheme: dark;
   }
   * { box-sizing:border-box; }
-  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  html,body { margin:0; }
+  body { font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; background:var(--bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
   button,input,select,textarea { font:inherit; color:inherit; }
-  header { display:flex; align-items:center; gap:16px; padding:0 20px; height:56px; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
-  header h1 { font-size:16px; margin:0; display:flex; align-items:center; gap:8px; }
-  .logo { width:26px; height:26px; border-radius:7px; background:var(--brand); color:var(--brand-ink); display:grid; place-items:center; font-weight:700; }
-  nav { display:flex; gap:2px; overflow-x:auto; flex:1; }
-  nav button { background:none; border:0; padding:8px 12px; border-radius:8px; cursor:pointer; color:var(--muted); white-space:nowrap; }
-  nav button:hover { background:var(--hover); }
-  nav button.on { background:var(--hover); color:var(--ink); font-weight:600; }
-  main { max-width:1200px; margin:0 auto; padding:20px; }
-  .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
-  .card h3 { margin:0 0 10px; font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-  .stat .v { font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; }
-  .stat .s { color:var(--muted); font-size:12px; margin-top:2px; }
-  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
-  .row .grow { flex:1; }
-  .cols { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); margin-top:14px; }
-  input[type=text],input[type=search],input[type=password],input[type=date],select,textarea {
-    background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-width:0; }
+  svg.ic { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+
+  /* ───── shell ───── */
+  .shell { display:grid; grid-template-columns:264px minmax(0,1fr); min-height:100vh; }
+  .sidebar { background:var(--side); color:var(--side-ink); position:sticky; top:0; height:100vh; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto; z-index:40;
+    background-image:radial-gradient(420px 260px at 0% 0%, rgba(108,76,245,.32), transparent 70%), radial-gradient(380px 240px at 100% 100%, rgba(168,85,247,.16), transparent 70%); }
+  .brand { display:flex; align-items:center; gap:11px; padding:4px 8px 18px; }
+  .logo { width:38px; height:38px; border-radius:12px; background:linear-gradient(135deg,var(--brand),var(--brand2)); color:#fff; display:grid; place-items:center; font-weight:800; font-size:19px; box-shadow:0 6px 18px rgba(108,76,245,.5); }
+  .brand b { display:block; color:#fff; font-size:16px; letter-spacing:-.2px; } .brand small { color:var(--side-muted); font-size:11.5px; }
+  .navgroup { margin:14px 0 4px; padding:0 10px; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--side-muted); font-weight:700; }
+  .navitem { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border:0; border-radius:11px; background:none; color:var(--side-ink); cursor:pointer; text-align:left; position:relative; transition:background .15s,color .15s; }
+  .navitem:hover { background:rgba(255,255,255,.06); color:#fff; }
+  .navitem.on { background:linear-gradient(90deg,rgba(108,76,245,.34),rgba(168,85,247,.12)); color:#fff; font-weight:600; }
+  .navitem.on::before { content:""; position:absolute; left:-14px; top:9px; bottom:9px; width:4px; border-radius:0 4px 4px 0; background:linear-gradient(var(--brand),var(--brand2)); }
+  .navitem .badge { margin-left:auto; font-size:11px; padding:1px 7px; border-radius:99px; background:rgba(255,255,255,.1); color:#fff; }
+  .sidefoot { margin-top:auto; padding-top:14px; border-top:1px solid var(--side-line); display:flex; flex-direction:column; gap:8px; }
+  .statusbox { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.05); font-size:12.5px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#34d399; box-shadow:0 0 0 4px rgba(52,211,153,.18); flex:none; } .dot.bad { background:#f87171; box-shadow:0 0 0 4px rgba(248,113,113,.2); }
+  .overlay { display:none; position:fixed; inset:0; background:rgba(5,6,16,.55); z-index:35; backdrop-filter:blur(2px); }
+  .content { min-width:0; display:flex; flex-direction:column; }
+  .topbar { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:14px; padding:14px 28px; background:color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter:blur(14px); border-bottom:1px solid var(--line); }
+  .topbar .title { min-width:0; } .topbar h1 { margin:0; font-size:20px; letter-spacing:-.3px; line-height:1.2; } .topbar p { margin:1px 0 0; color:var(--muted); font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .grow { flex:1; }
+  .search { position:relative; } .search svg { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--muted); width:16px; height:16px; }
+  .search input[type=search] { padding:9px 12px 9px 36px; width:260px; border-radius:11px; }
+  .iconbtn { width:38px; height:38px; display:grid; place-items:center; border-radius:11px; border:1px solid var(--line); background:var(--card); cursor:pointer; color:var(--ink); }
+  .iconbtn:hover { background:var(--hover); } .menubtn { display:none; }
+  main { width:100%; max-width:1320px; margin:0 auto; padding:24px 28px 56px; }
+  main h2 { display:none; }
+  .view { animation:rise .35s cubic-bezier(.2,.7,.2,1); } @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .view { animation:none; } }
+
+  /* ───── building blocks ───── */
+  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:var(--shadow); }
+  .card h3 { margin:0 0 12px; font-size:13px; color:var(--muted); font-weight:700; letter-spacing:.02em; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .cols { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); margin-top:16px; }
+  .grid.k6 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  @media (max-width:1100px) { .grid.k6 { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .grid.k6 { grid-template-columns:1fr; } }
+  .cols3 { display:grid; gap:16px; grid-template-columns:2fr 1fr; margin-top:16px; } .cols3.even { grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); }
+  .kpi { position:relative; overflow:hidden; display:flex; flex-direction:column; gap:4px; }
+  .kpi .chip { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; margin-bottom:6px; }
+  .kpi .label { color:var(--muted); font-size:12.5px; font-weight:600; } .kpi .v { font-size:27px; font-weight:800; letter-spacing:-.6px; font-variant-numeric:tabular-nums; line-height:1.15; }
+  .kpi .s { color:var(--muted); font-size:12px; } .kpi svg.spark { position:absolute; right:12px; bottom:12px; width:96px; height:34px; opacity:.9; }
+  .c-violet { background:var(--brand-soft); color:var(--brand); } .c-green { background:var(--ok-bg); color:var(--ok); } .c-red { background:var(--bad-bg); color:var(--bad); }
+  .c-blue { background:var(--info-bg); color:var(--info); } .c-amber { background:var(--warn-bg); color:var(--warn); }
+  .hero { display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding:22px 24px; border-radius:18px; color:#fff; margin-bottom:16px; position:relative; overflow:hidden;
+    background:linear-gradient(120deg,#2b1d7a 0%,#6c4cf5 52%,#c084fc 100%); box-shadow:0 14px 34px rgba(108,76,245,.32); }
+  .hero::after { content:""; position:absolute; right:-60px; top:-70px; width:240px; height:240px; border-radius:50%; background:rgba(255,255,255,.12); }
+  .hero h2 { display:block !important; margin:0; font-size:22px; letter-spacing:-.4px; } .hero p { margin:3px 0 0; opacity:.85; } .hero .btn { background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.3); color:#fff; backdrop-filter:blur(4px); }
+  .hero .btn:hover { background:rgba(255,255,255,.26); } .hero .tags { display:flex; gap:8px; flex-wrap:wrap; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; } .row .grow { flex:1; }
+  input[type=text],input[type=search],input[type=password],input[type=date],select,textarea { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:9px 12px; min-width:0; }
   textarea { width:100%; resize:vertical; }
-  input:focus,select:focus,textarea:focus,button:focus-visible { outline:2px solid var(--brand); outline-offset:1px; }
-  .btn { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; }
-  .btn:hover { background:var(--hover); }
-  .btn.primary { background:var(--brand); color:var(--brand-ink); border-color:var(--brand); font-weight:600; }
-  .btn.danger { color:var(--bad); border-color:var(--bad); }
-  .btn.sm { padding:4px 9px; font-size:12px; }
-  .btn:disabled { opacity:.5; cursor:default; }
+  input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible { outline:2px solid var(--brand); outline-offset:1px; }
+  .btn { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 14px; cursor:pointer; text-decoration:none; color:var(--ink); display:inline-flex; align-items:center; gap:7px; transition:background .12s, transform .08s; }
+  .btn:hover { background:var(--hover); } .btn:active { transform:translateY(1px); }
+  .btn.primary { background:linear-gradient(135deg,var(--brand),var(--brand2)); color:#fff; border-color:transparent; font-weight:600; box-shadow:0 6px 16px rgba(108,76,245,.3); } .btn.primary:hover { filter:brightness(1.06); }
+  .btn.danger { color:var(--bad); border-color:color-mix(in srgb, var(--bad) 50%, transparent); } .btn.sm { padding:4px 10px; font-size:12px; border-radius:8px; } .btn:disabled { opacity:.5; cursor:default; }
   table { width:100%; border-collapse:collapse; }
-  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
-  th { font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap; }
-  tbody tr:hover { background:var(--hover); }
-  tr.click { cursor:pointer; }
-  td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
-  .tablewrap { overflow-x:auto; padding:0; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:99px; font-size:12px; font-weight:600; }
-  .pill.ok { background:var(--ok-bg); color:var(--ok); } .pill.warn { background:var(--warn-bg); color:var(--warn); } .pill.bad { background:var(--bad-bg); color:var(--bad); }
-  .pill.gray { background:var(--hover); color:var(--muted); }
-  .muted { color:var(--muted); } .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px; }
-  .pager { display:flex; gap:10px; align-items:center; justify-content:flex-end; padding:10px; color:var(--muted); }
-  .bars { display:flex; align-items:flex-end; gap:4px; height:90px; }
-  .bars div { flex:1; background:var(--brand); border-radius:3px 3px 0 0; min-height:2px; opacity:.85; position:relative; }
-  .bars div:hover { opacity:1; }
-  .barlabels { display:flex; gap:4px; font-size:10px; color:var(--muted); margin-top:4px; }
-  .barlabels span { flex:1; text-align:center; overflow:hidden; }
-  .hbar { display:grid; grid-template-columns:110px 1fr 90px; gap:8px; align-items:center; margin:6px 0; font-size:13px; }
-  .hbar .t { background:var(--hover); border-radius:4px; height:10px; } .hbar .t i { display:block; height:100%; background:var(--brand); border-radius:4px; }
-  .toggle { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); }
-  .toggle:last-child { border-bottom:0; }
-  .toggle small { display:block; color:var(--muted); }
-  .switch { position:relative; width:42px; height:24px; flex:none; }
-  .switch input { opacity:0; width:0; height:0; }
-  .switch span { position:absolute; inset:0; background:var(--line); border-radius:99px; cursor:pointer; transition:.15s; }
-  .switch span::after { content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
-  .switch input:checked + span { background:var(--brand); } .switch input:checked + span::after { transform:translateX(18px); }
-  .switch input:focus-visible + span { outline:2px solid var(--brand); outline-offset:2px; }
-  .field { margin:12px 0; } .field label { display:block; font-weight:600; margin-bottom:4px; }
-  .field small { color:var(--muted); display:block; margin-top:3px; }
-  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:10px; z-index:30; display:none; max-width:90vw; }
-  #toast.err { background:var(--bad); color:#fff; }
-  dialog { border:1px solid var(--line); border-radius:14px; background:var(--card); color:var(--ink); padding:0; width:min(760px,94vw); max-height:90vh; }
-  dialog::backdrop { background:rgba(0,0,0,.45); }
-  .dlg { padding:20px; overflow:auto; max-height:88vh; }
-  .dlg h2 { margin:0 0 4px; font-size:18px; }
-  .actions { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
-  .kv { display:grid; grid-template-columns:130px 1fr; gap:4px 12px; margin:12px 0; } .kv dt { color:var(--muted); } .kv dd { margin:0; word-break:break-all; }
-  #login { max-width:340px; margin:14vh auto; } #login h2 { margin-top:0; }
-  .dgrid { display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
-  .dcard { background:var(--card); border:2px solid var(--line); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
-  .dcard.active { border-color:var(--brand); box-shadow:0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent); }
-  .dcard h4 { margin:0; font-size:16px; display:flex; align-items:center; gap:8px; } .dcard p { margin:0; color:var(--muted); font-size:13px; min-height:54px; }
+  th,td { text-align:left; padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { font-size:11.5px; color:var(--muted); font-weight:700; white-space:nowrap; text-transform:uppercase; letter-spacing:.05em; background:color-mix(in srgb, var(--hover) 55%, transparent); }
+  tbody tr { transition:background .1s; } tbody tr:hover { background:var(--hover); } tbody tr:last-child td { border-bottom:0; }
+  tr.click { cursor:pointer; } td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .tablewrap { overflow-x:auto; padding:0; border-radius:16px; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:99px; font-size:12px; font-weight:600; white-space:nowrap; }
+  .pill.ok { background:var(--ok-bg); color:var(--ok); } .pill.warn { background:var(--warn-bg); color:var(--warn); } .pill.bad { background:var(--bad-bg); color:var(--bad); } .pill.gray { background:var(--hover); color:var(--muted); } .pill.brand { background:var(--brand-soft); color:var(--brand); }
+  .avatar { width:34px; height:34px; border-radius:50%; display:inline-grid; place-items:center; font-weight:700; font-size:13px; color:#fff; flex:none; }
+  .who { display:flex; align-items:center; gap:10px; } .who b { display:block; line-height:1.2; } .who small { color:var(--muted); }
+  .muted { color:var(--muted); } .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+  .pager { display:flex; gap:10px; align-items:center; justify-content:flex-end; padding:12px 14px; color:var(--muted); border-top:1px solid var(--line); }
+  .bars { display:flex; align-items:flex-end; gap:5px; height:110px; } .bars div { flex:1; background:linear-gradient(var(--brand2),var(--brand)); border-radius:5px 5px 0 0; min-height:3px; opacity:.88; } .bars div:hover { opacity:1; }
+  .barlabels { display:flex; gap:5px; font-size:10px; color:var(--muted); margin-top:5px; } .barlabels span { flex:1; text-align:center; overflow:hidden; }
+  .hbar { display:grid; grid-template-columns:110px 1fr 96px; gap:10px; align-items:center; margin:9px 0; font-size:13px; }
+  .hbar .t { background:var(--hover); border-radius:99px; height:9px; overflow:hidden; } .hbar .t i { display:block; height:100%; background:linear-gradient(90deg,var(--brand),var(--brand2)); border-radius:99px; transition:width .6s cubic-bezier(.2,.7,.2,1); }
+  .donut { display:flex; align-items:center; gap:18px; flex-wrap:wrap; } .legend { flex:1; min-width:140px; } .legend div { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; } .legend i { width:10px; height:10px; border-radius:3px; flex:none; } .legend span:last-child { margin-left:auto; font-weight:600; font-variant-numeric:tabular-nums; }
+  .feed { list-style:none; margin:0; padding:0; } .feed li { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); align-items:center; } .feed li:last-child { border-bottom:0; } .feed .meta { flex:1; min-width:0; } .feed .meta b { display:block; font-weight:600; } .feed .meta small { color:var(--muted); }
+  .feedic { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; flex:none; }
+  .toggle { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); } .toggle:last-child { border-bottom:0; } .toggle small { display:block; color:var(--muted); }
+  .switch { position:relative; width:44px; height:25px; flex:none; } .switch input { opacity:0; width:0; height:0; }
+  .switch span { position:absolute; inset:0; background:var(--line); border-radius:99px; cursor:pointer; transition:.18s; } .switch span::after { content:""; position:absolute; width:19px; height:19px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.18s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .switch input:checked + span { background:linear-gradient(135deg,var(--brand),var(--brand2)); } .switch input:checked + span::after { transform:translateX(19px); } .switch input:focus-visible + span { outline:2px solid var(--brand); outline-offset:2px; }
+  .field { margin:14px 0; } .field label { display:block; font-weight:600; margin-bottom:5px; } .field small { color:var(--muted); display:block; margin-top:4px; }
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:11px 18px; border-radius:12px; z-index:90; display:none; max-width:90vw; box-shadow:0 12px 30px rgba(0,0,0,.3); font-weight:500; } #toast.err { background:var(--bad); color:#fff; }
+  dialog { border:1px solid var(--line); border-radius:18px; background:var(--card); color:var(--ink); padding:0; width:min(780px,94vw); max-height:90vh; box-shadow:0 30px 80px rgba(0,0,0,.4); }
+  dialog::backdrop { background:rgba(8,9,22,.6); backdrop-filter:blur(3px); } .dlg { padding:24px; overflow:auto; max-height:88vh; } .dlg h2 { display:block !important; margin:0 0 4px; font-size:20px; }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin:16px 0; }
+  .kv { display:grid; grid-template-columns:140px 1fr; gap:6px 14px; margin:14px 0; } .kv dt { color:var(--muted); } .kv dd { margin:0; word-break:break-all; }
+  .secret { background:var(--warn-bg); color:var(--warn); border-radius:10px; padding:12px; margin:12px 0; } .empty { padding:36px; text-align:center; color:var(--muted); }
+  .dgrid { display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(256px,1fr)); }
+  .dcard { background:var(--card); border:2px solid var(--line); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px; transition:transform .15s, box-shadow .15s; box-shadow:var(--shadow); } .dcard:hover { transform:translateY(-3px); }
+  .dcard.active { border-color:var(--brand); box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent), var(--shadow); }
+  .dcard h4 { margin:0; font-size:16px; display:flex; align-items:center; gap:8px; } .dcard p { margin:0; color:var(--muted); font-size:13px; min-height:56px; } .sechead { margin:26px 0 14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:16px; } .sechead small { color:var(--muted); font-weight:400; font-size:13px; } .sechead:first-child { margin-top:4px; } .sechead { grid-column:1/-1; }
   .tags { display:flex; gap:6px; flex-wrap:wrap; }
-  .phone { width:168px; height:318px; margin:0 auto; border-radius:26px; border:5px solid #1b1b1f; position:relative; overflow:hidden; font-family:system-ui,sans-serif; flex:none; }
-  .phone .pad { padding:12px 10px; }
-  .seg { display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; } .seg button { border:0; background:var(--card); padding:6px 12px; cursor:pointer; } .seg button.on { background:var(--brand); color:var(--brand-ink); font-weight:600; }
-  .empty { padding:30px; text-align:center; color:var(--muted); }
-  .secret { background:var(--warn-bg); color:var(--warn); border-radius:8px; padding:10px; margin:10px 0; }
-  @media (max-width:640px) { main { padding:12px; } header { padding:0 10px; gap:8px; } .hbar { grid-template-columns:80px 1fr 70px; } }
+  .phone { width:176px; height:354px; margin:0 auto; border-radius:26px; border:5px solid #1b1b1f; position:relative; overflow:hidden; font-family:system-ui,sans-serif; flex:none; } .phone .pad { padding:12px 10px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; } .seg button { border:0; background:var(--card); padding:7px 14px; cursor:pointer; } .seg button.on { background:linear-gradient(135deg,var(--brand),var(--brand2)); color:#fff; font-weight:600; }
+  /* ───── login ───── */
+  .loginwrap { min-height:100vh; display:grid; place-items:center; padding:20px; background:radial-gradient(700px 420px at 15% 10%, rgba(108,76,245,.35), transparent 70%), radial-gradient(600px 400px at 90% 90%, rgba(168,85,247,.25), transparent 70%), var(--side); }
+  #login { width:min(380px,100%); background:var(--card); border:1px solid var(--line); border-radius:22px; padding:30px; box-shadow:0 30px 80px rgba(0,0,0,.45); }
+  #login .logo { width:48px; height:48px; font-size:24px; margin-bottom:14px; } #login h2 { display:block !important; margin:0 0 4px; font-size:22px; }
+  /* ───── responsive ───── */
+  @media (max-width:980px) { .cols3 { grid-template-columns:1fr; } }
+  @media (max-width:900px) {
+    .shell { grid-template-columns:1fr; }
+    .sidebar { position:fixed; left:0; top:0; bottom:0; width:272px; transform:translateX(-102%); transition:transform .25s cubic-bezier(.2,.7,.2,1); }
+    .shell.open .sidebar { transform:none; } .shell.open .overlay { display:block; } .menubtn { display:grid; }
+    .topbar { padding:12px 14px; } main { padding:16px 14px 48px; } .search input[type=search] { width:150px; }
+  }
+  @media (max-width:560px) { .search { display:none; } .hbar { grid-template-columns:84px 1fr 78px; } .kv { grid-template-columns:100px 1fr; } .cols { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -112,7 +158,7 @@ const h = (tag, attrs, ...kids) => {
     else if (k === 'value' || k === 'checked' || k === 'disabled') e[k] = v;
     else e.setAttribute(k, v === true ? '' : v);
   }
-  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
   return e;
 };
 const $ = (s) => document.querySelector(s);
@@ -162,44 +208,176 @@ function confirmDlg(title, text, label, danger) {
 }
 const openDlg = (...nodes) => { $('#dlgBody').replaceChildren(...nodes); const d = $('#dlg'); if (!d.open) d.showModal(); };
 
+// ───────── icons (static trusted paths, built with createElementNS) ─────────
+const ICONS = {
+  grid: 'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z',
+  users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
+  list: 'M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01',
+  phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M12 18h.01',
+  palette: 'M12 2a10 10 0 1 0 0 20c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4a4.6 4.6 0 0 0 4.6-4.6C22 6 17.5 2 12 2z M6.5 12.5h.01 M9.5 7.5h.01 M14.5 7.5h.01 M17.5 12.5h.01',
+  sliders: 'M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M1 14h6 M9 8h6 M17 16h6',
+  check: 'M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35',
+  refresh: 'M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+  sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42',
+  moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
+  auto: 'M2 4h20v12H2z M8 20h8 M12 16v4',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+  menu: 'M3 12h18 M3 6h18 M3 18h18',
+  up: 'M7 17L17 7 M7 7h10v10',
+  down: 'M17 7L7 17 M17 17H7V7',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  userplus: 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M20 8v6 M23 11h-6',
+  card: 'M1 4h22v16H1z M1 10h22',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
+  server: 'M2 2h20v8H2z M2 14h20v8H2z M6 6h.01 M6 18h.01',
+  alert: 'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01',
+  trash: 'M3 6h18 M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6 M10 11v6 M14 11v6 M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2',
+  key: 'M21 2l-2 2 M15.5 7.5l3 3L22 7l-3-3 M11.5 11.5a5.5 5.5 0 1 0-7.8 7.8 5.5 5.5 0 0 0 7.8-7.8z M11.5 11.5L15.5 7.5',
+  ban: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M4.93 4.93l14.14 14.14',
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs, ...kids) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) if (v != null) e.setAttribute(k, v);
+  for (const c of kids.flat(Infinity)) if (c != null) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+};
+const icon = (name, size) => {
+  const s = svg('svg', { viewBox: '0 0 24 24', class: 'ic', 'aria-hidden': 'true' }, svg('path', { d: ICONS[name] || ICONS.grid }));
+  if (size) { s.style.width = size + 'px'; s.style.height = size + 'px'; }
+  return s;
+};
+const PALETTE = ['#6c4cf5', '#06b6d4', '#f59e0b', '#ec4899', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'];
+const colorFor = (s) => { let n = 0; for (const c of String(s)) n = (n * 31 + c.charCodeAt(0)) >>> 0; return PALETTE[n % PALETTE.length]; };
+const avatar = (name) => h('span', { class: 'avatar', style: 'background:' + colorFor(name) }, (String(name).trim()[0] || '?').toUpperCase());
+
+// ───────── theme (auto / light / dark), remembered in this browser ─────────
+const THEME_KEY = 'paisa-admin-theme';
+let theme = 'auto';
+try { theme = localStorage.getItem(THEME_KEY) || 'auto'; } catch { /* private window */ }
+function applyTheme(t) { if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t); }
+applyTheme(theme);
+
 // ───────── login ─────────
 function showLogin() {
-  $('#app').replaceChildren(h('form', { id: 'login', class: 'card', onsubmit: async (e) => {
+  $('#app').replaceChildren(h('div', { class: 'loginwrap' }, h('form', { id: 'login', onsubmit: async (e) => {
     e.preventDefault();
     const pw = e.target.pw.value;
     await act(async () => { await api('POST', '/login', { password: pw }); boot(); });
   } },
-    h('h2', {}, 'Paisa Admin'), h('p', { class: 'muted' }, 'Sign in to manage users, data and app settings.'),
+    h('div', { class: 'logo' }, '₹'), h('h2', {}, 'Paisa Admin'), h('p', { class: 'muted', style: 'margin:0 0 6px' }, 'Sign in to manage users, data, design and app settings.'),
     h('div', { class: 'field' }, h('label', { for: 'pw' }, 'Admin password'), h('input', { type: 'password', id: 'pw', name: 'pw', autocomplete: 'current-password', required: true, style: 'width:100%', autofocus: true })),
-    h('button', { class: 'btn primary', style: 'width:100%' }, 'Sign in')));
+    h('button', { class: 'btn primary', style: 'width:100%;justify-content:center;padding:11px' }, 'Sign in'))));
 }
 
-// ───────── shell ─────────
-const TABS = [['overview', 'Overview'], ['users', 'Users'], ['transactions', 'Transactions'], ['sessions', 'Sessions'], ['design', 'App design'], ['controls', 'App controls'], ['audit', 'Audit log']];
+// ───────── shell: sidebar + top bar ─────────
+const NAV = [
+  ['Dashboard', [['overview', 'Overview', 'grid', 'Live numbers across your whole app']]],
+  ['People', [['users', 'Users', 'users', 'Accounts, passwords and access'], ['sessions', 'Devices', 'phone', 'Every signed-in device. Sign any of them out']]],
+  ['Money', [['transactions', 'Transactions', 'list', 'Every synced transaction, searchable']]],
+  ['App', [['design', 'App design', 'palette', 'Switch the look of every phone, live'], ['controls', 'App controls', 'sliders', 'Feature switches, maintenance and messages']]],
+  ['System', [['audit', 'Audit log', 'check', 'Every admin action, recorded']]],
+];
+const PAGES = Object.fromEntries(NAV.flatMap(([, items]) => items.map(([k, label, ic, sub]) => [k, { label, ic, sub }])));
 const VIEWS = { overview: viewOverview, users: viewUsers, transactions: viewTransactions, sessions: viewSessions, design: viewDesign, controls: viewControls, audit: viewAudit };
 let tab = 'overview';
+let pendingSearch = '';
+let statusTimer;
 
 function boot() {
-  const nav = h('nav', {}, TABS.map(([k, label]) => h('button', { 'data-tab': k, class: k === tab ? 'on' : '', onclick: () => go(k) }, label)));
-  $('#app').replaceChildren(
-    h('header', {}, h('h1', {}, h('span', { class: 'logo' }, '₹'), 'Paisa Admin'), nav,
-      h('button', { class: 'btn sm', onclick: async () => { await act(() => api('POST', '/logout')); showLogin(); } }, 'Sign out')),
+  const shell = h('div', { class: 'shell', id: 'shell' });
+  const themeBtn = h('button', { class: 'iconbtn', id: 'themeBtn', title: 'Theme: auto', 'aria-label': 'Change theme', onclick: () => {
+    theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+    try { localStorage.setItem(THEME_KEY, theme); } catch { /* ignore */ }
+    applyTheme(theme); drawThemeIcon();
+  } });
+  const drawThemeIcon = () => { themeBtn.replaceChildren(icon(theme === 'auto' ? 'auto' : theme === 'light' ? 'sun' : 'moon')); themeBtn.title = 'Theme: ' + theme; };
+  drawThemeIcon();
+  const close = () => shell.classList.remove('open');
+  const side = h('aside', { class: 'sidebar', 'aria-label': 'Main menu' },
+    h('div', { class: 'brand' }, h('div', { class: 'logo' }, '₹'), h('div', {}, h('b', {}, 'Paisa'), h('small', {}, 'Admin console'))),
+    NAV.map(([group, items]) => [h('div', { class: 'navgroup' }, group), items.map(([k, label, ic]) =>
+      h('button', { class: 'navitem' + (k === tab ? ' on' : ''), 'data-tab': k, onclick: () => go(k) }, icon(ic), label, k === 'users' ? h('span', { class: 'badge', id: 'badgeUsers', hidden: true }) : null))]),
+    h('div', { class: 'sidefoot' },
+      h('div', { class: 'statusbox' }, h('span', { class: 'dot', id: 'statusDot' }), h('div', {}, h('b', { id: 'statusText', style: 'display:block;color:#fff' }, 'Checking…'), h('small', { id: 'statusSub', style: 'color:var(--side-muted)' }, ''))),
+      h('button', { class: 'navitem', onclick: async () => { await act(() => api('POST', '/logout')); clearInterval(statusTimer); showLogin(); } }, icon('logout'), 'Sign out')));
+  const search = h('label', { class: 'search' }, icon('search'), h('input', { type: 'search', placeholder: 'Find a user…', 'aria-label': 'Find a user', onkeydown: (e) => {
+    if (e.key === 'Enter') { pendingSearch = e.target.value.trim(); e.target.value = ''; go('users'); }
+  } }));
+  const content = h('div', { class: 'content' },
+    h('header', { class: 'topbar' },
+      h('button', { class: 'iconbtn menubtn', 'aria-label': 'Open menu', onclick: () => shell.classList.add('open') }, icon('menu')),
+      h('div', { class: 'title' }, h('h1', { id: 'pageTitle' }, ''), h('p', { id: 'pageSub' }, '')),
+      h('span', { class: 'grow' }), search,
+      h('button', { class: 'iconbtn', 'aria-label': 'Refresh', title: 'Refresh', onclick: () => go(tab) }, icon('refresh')), themeBtn),
     h('main', { id: 'main' }));
+  shell.append(side, h('div', { class: 'overlay', onclick: close }), content);
+  shell.addEventListener('click', (e) => { if (e.target.closest('.navitem[data-tab]')) close(); });
+  $('#app').replaceChildren(shell);
+  refreshStatus(); clearInterval(statusTimer); statusTimer = setInterval(refreshStatus, 60000);
   go((location.hash || '').slice(1) in VIEWS ? location.hash.slice(1) : tab);
 }
+
+async function refreshStatus() {
+  try {
+    const s = await api('GET', '/stats');
+    $('#statusDot').classList.toggle('bad', !!s.config.maintenanceMode);
+    $('#statusText').textContent = s.config.maintenanceMode ? 'Maintenance mode' : 'All systems normal';
+    $('#statusSub').textContent = 'Up ' + dur(s.server.uptimeSec) + ' · ' + bytes(s.server.dbBytes);
+    const b = $('#badgeUsers'); if (b) { b.textContent = num(s.users.total); b.hidden = false; }
+  } catch { /* the sidebar footer is cosmetic */ }
+}
+
 function go(k) {
   tab = k; location.hash = k;
-  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === k));
-  const main = $('#main'); main.replaceChildren(h('div', { class: 'empty' }, 'Loading…'));
+  const p = PAGES[k];
+  document.querySelectorAll('.navitem[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === k));
+  $('#pageTitle').textContent = p.label; $('#pageSub').textContent = p.sub; document.title = p.label + ' · Paisa Admin';
+  const main = $('#main');
+  main.classList.remove('view'); void main.offsetWidth; main.classList.add('view');
+  main.replaceChildren(h('div', { class: 'empty' }, 'Loading…'));
   VIEWS[k](main).catch((e) => { if (e.message !== 'Signed out') main.replaceChildren(h('div', { class: 'empty' }, e.message)); });
 }
 
-const statCard = (label, value, sub) => h('div', { class: 'card stat' }, h('h3', {}, label), h('div', { class: 'v' }, value), sub ? h('div', { class: 's' }, sub) : null);
-
+// ───────── charts (hand-rolled SVG: no libraries, theme-aware) ─────────
+function sparkline(values, color) {
+  const w = 96, hgt = 34, max = Math.max(1, ...values), step = w / Math.max(1, values.length - 1);
+  const pts = values.map((v, i) => `${(i * step).toFixed(1)},${(hgt - 3 - (v / max) * (hgt - 8)).toFixed(1)}`);
+  return svg('svg', { class: 'spark', viewBox: `0 0 ${w} ${hgt}`, 'aria-hidden': 'true' },
+    svg('polyline', { points: pts.join(' '), fill: 'none', stroke: color, 'stroke-width': '2', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+}
+function areaChart(series, label) {
+  const W = 600, H = 190, pad = { l: 34, r: 8, t: 10, b: 24 };
+  const max = Math.max(4, ...series.map((s) => s.count)), iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const x = (i) => pad.l + (i / (series.length - 1)) * iw, y = (v) => pad.t + ih - (v / max) * ih;
+  const line = series.map((s, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(s.count).toFixed(1)}`).join(' ');
+  const id = 'g' + Math.random().toString(36).slice(2, 7);
+  const grid = [0, .25, .5, .75, 1].map((f) => svg('g', {}, svg('line', { x1: pad.l, x2: W - pad.r, y1: pad.t + ih * (1 - f), y2: pad.t + ih * (1 - f), stroke: 'var(--line)', 'stroke-width': '1' }),
+    svg('text', { x: pad.l - 6, y: pad.t + ih * (1 - f) + 4, 'text-anchor': 'end', 'font-size': '10', fill: 'var(--muted)' }, Math.round(max * f))));
+  return svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto', role: 'img', 'aria-label': label },
+    svg('defs', {}, svg('linearGradient', { id, x1: 0, y1: 0, x2: 0, y2: 1 }, svg('stop', { offset: '0%', 'stop-color': 'var(--brand)', 'stop-opacity': '.38' }), svg('stop', { offset: '100%', 'stop-color': 'var(--brand)', 'stop-opacity': '0' }))),
+    grid,
+    svg('path', { d: `${line} L${x(series.length - 1)},${pad.t + ih} L${x(0)},${pad.t + ih} Z`, fill: `url(#${id})` }),
+    svg('path', { d: line, fill: 'none', stroke: 'var(--brand)', 'stroke-width': '2.5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }),
+    series.map((s, i) => svg('g', {}, svg('circle', { cx: x(i), cy: y(s.count), r: 3.5, fill: 'var(--card)', stroke: 'var(--brand)', 'stroke-width': '2' }, svg('title', {}, `${s.day}: ${s.count}`)),
+      i % 2 === 0 ? svg('text', { x: x(i), y: H - 6, 'text-anchor': 'middle', 'font-size': '10', fill: 'var(--muted)' }, s.day.slice(5)) : null)));
+}
+function donut(rows) {
+  const total = rows.reduce((a, r) => a + r.paise, 0);
+  const R = 52, C = 2 * Math.PI * R;
+  let off = 0;
+  const segs = rows.slice(0, 6).map((r, i) => { const len = total ? (r.paise / total) * C : 0; const el = svg('circle', { cx: 70, cy: 70, r: R, fill: 'none', stroke: PALETTE[i % PALETTE.length], 'stroke-width': 18, 'stroke-dasharray': `${len} ${C - len}`, 'stroke-dashoffset': -off }, svg('title', {}, r.key)); off += len; return el; });
+  return h('div', { class: 'donut' },
+    svg('svg', { viewBox: '0 0 140 140', width: 140, height: 140, 'aria-hidden': 'true' }, svg('g', { transform: 'rotate(-90 70 70)' }, svg('circle', { cx: 70, cy: 70, r: R, fill: 'none', stroke: 'var(--hover)', 'stroke-width': 18 }), segs),
+      svg('text', { x: 70, y: 66, 'text-anchor': 'middle', 'font-size': '10', fill: 'var(--muted)' }, 'Total spend'), svg('text', { x: 70, y: 84, 'text-anchor': 'middle', 'font-size': '14', 'font-weight': '800', fill: 'var(--ink)' }, inrShort(total))),
+    h('div', { class: 'legend' }, rows.length ? rows.slice(0, 6).map((r, i) => h('div', {}, h('i', { style: 'background:' + PALETTE[i % PALETTE.length] }), h('span', {}, r.key), h('span', {}, total ? Math.round(r.paise / total * 100) + '%' : '0%'))) : h('span', { class: 'muted' }, 'No spend yet')));
+}
+const inrShort = (p) => { const r = p / 100; return r >= 1e7 ? '₹' + (r / 1e7).toFixed(2) + 'Cr' : r >= 1e5 ? '₹' + (r / 1e5).toFixed(2) + 'L' : r >= 1e3 ? '₹' + (r / 1e3).toFixed(1) + 'k' : '₹' + r.toFixed(0); };
 function barChart(series) {
   const max = Math.max(1, ...series.map((s) => s.count));
   return h('div', {},
-    h('div', { class: 'bars' }, series.map((s) => h('div', { style: `height:${Math.max(2, s.count / max * 100)}%`, title: `${s.day}: ${s.count}` }))),
+    h('div', { class: 'bars' }, series.map((s) => h('div', { style: `height:${Math.max(3, s.count / max * 100)}%`, title: `${s.day}: ${s.count}` }))),
     h('div', { class: 'barlabels' }, series.map((s, i) => h('span', {}, i % 2 === 0 ? s.day.slice(8) : ''))));
 }
 function hbars(rows, fmtRight) {
@@ -207,50 +385,71 @@ function hbars(rows, fmtRight) {
   const max = Math.max(1, ...rows.map((r) => r.paise));
   return h('div', {}, rows.map((r) => h('div', { class: 'hbar' }, h('span', {}, r.key), h('div', { class: 't' }, h('i', { style: `width:${r.paise / max * 100}%` })), h('span', { class: 'num', style: 'text-align:right' }, fmtRight(r)))));
 }
+const kpi = (label, value, sub, ic, tone, spark) => h('div', { class: 'card kpi' }, h('div', { class: 'chip c-' + tone }, icon(ic)), h('div', { class: 'label' }, label), h('div', { class: 'v' }, value), h('div', { class: 's' }, sub), spark || null);
+
+const ACTION_TEXT = {
+  'admin.login': ['Admin signed in', 'key', 'violet'], 'admin.login_failed': ['Failed admin sign-in', 'alert', 'red'], 'user.suspend': ['Suspended a user', 'ban', 'amber'], 'user.unsuspend': ['Reactivated a user', 'check', 'green'],
+  'user.delete': ['Deleted a user', 'trash', 'red'], 'user.edit': ['Edited a user', 'users', 'blue'], 'user.reset_password': ['Reset a password', 'key', 'amber'], 'user.force_logout': ['Signed a user out', 'logout', 'amber'],
+  'user.clear_transactions': ['Cleared user data', 'trash', 'red'], 'txn.delete': ['Deleted a transaction', 'trash', 'red'], 'session.revoke': ['Signed a device out', 'phone', 'amber'],
+  'config.update': ['Changed app settings', 'sliders', 'violet'], 'users.export': ['Exported users', 'download', 'blue'],
+};
 
 // ───────── overview ─────────
 async function viewOverview(main) {
-  const s = await api('GET', '/stats');
-  const cfgFlags = [];
-  if (s.config.maintenanceMode) cfgFlags.push(pill('Maintenance ON', 'bad'));
-  if (!s.config.registrationsOpen) cfgFlags.push(pill('Sign-ups paused', 'warn'));
-  if (!s.config.syncEnabled) cfgFlags.push(pill('Sync disabled', 'warn'));
+  const [s, ur, au] = await Promise.all([api('GET', '/stats'), api('GET', '/users?limit=6'), api('GET', '/audit?limit=7')]);
+  const flags = [];
+  if (s.config.maintenanceMode) flags.push(pill('Maintenance ON', 'bad'));
+  if (!s.config.registrationsOpen) flags.push(pill('Sign-ups paused', 'warn'));
+  if (!s.config.syncEnabled) flags.push(pill('Sync disabled', 'warn'));
+  const hr = new Date().getHours();
+  const net = s.transactions.creditPaise - s.transactions.debitPaise;
   main.replaceChildren(
-    h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'Overview'), cfgFlags, h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => go('overview') }, 'Refresh')),
-    h('div', { class: 'grid' },
-      statCard('Users', num(s.users.total), `${num(s.users.active)} active · ${num(s.users.suspended)} suspended`),
-      statCard('New users', num(s.users.last7d), `last 7 days · ${num(s.users.last30d)} in 30 days`),
-      statCard('Signed-in devices', num(s.activeSessions), 'active sessions'),
-      statCard('Transactions', num(s.transactions.total), `${num(s.transactions.needsReview)} need review`),
-      statCard('Total spent', inr(s.transactions.debitPaise), 'confirmed debits, all users'),
-      statCard('Total received', inr(s.transactions.creditPaise), 'confirmed credits, all users')),
-    h('div', { class: 'cols' },
-      h('div', { class: 'card' }, h('h3', {}, 'Sign-ups · last 14 days'), barChart(s.signups)),
-      h('div', { class: 'card' }, h('h3', {}, 'Transactions by day · last 14 days'), barChart(s.transactionsPerDay)),
-      h('div', { class: 'card' }, h('h3', {}, 'Spend by payment app'), hbars(s.byApp, (r) => inr(r.paise))),
+    h('section', { class: 'hero' },
+      h('div', { style: 'flex:1;min-width:220px' }, h('h2', {}, (hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + ', admin'),
+        h('p', {}, `${num(s.users.total)} users · ${num(s.transactions.total)} transactions · ${num(s.activeSessions)} devices signed in right now`),
+        h('div', { class: 'tags', style: 'margin-top:12px' }, h('button', { class: 'btn', onclick: () => go('users') }, icon('users'), 'Manage users'), h('button', { class: 'btn', onclick: () => go('design') }, icon('palette'), 'Change app design'), h('button', { class: 'btn', onclick: () => go('controls') }, icon('sliders'), 'App controls'))),
+      h('div', { class: 'tags' }, flags.length ? flags : pill('● All systems normal', 'ok'))),
+    h('div', { class: 'grid k6' },
+      kpi('Total users', num(s.users.total), `${num(s.users.active)} active · ${num(s.users.suspended)} suspended`, 'users', 'violet', sparkline(s.signups.map((d) => d.count), 'var(--brand)')),
+      kpi('New this week', num(s.users.last7d), `${num(s.users.last30d)} in the last 30 days`, 'userplus', 'blue'),
+      kpi('Devices online', num(s.activeSessions), 'active sign-ins', 'phone', 'green'),
+      kpi('Transactions', num(s.transactions.total), `${num(s.transactions.needsReview)} need review`, 'card', 'amber', sparkline(s.transactionsPerDay.map((d) => d.count), 'var(--warn)')),
+      kpi('Total spent', inr(s.transactions.debitPaise), 'confirmed debits, all users', 'up', 'red'),
+      kpi('Total received', inr(s.transactions.creditPaise), net >= 0 ? 'net positive ' + inr(net) : 'net outflow ' + inr(-net), 'down', 'green')),
+    h('div', { class: 'cols3' },
+      h('div', { class: 'card' }, h('h3', {}, 'Transactions per day', h('span', { class: 'pill gray' }, 'last 14 days')), areaChart(s.transactionsPerDay, 'Transactions per day')),
+      h('div', { class: 'card' }, h('h3', {}, 'Spend by payment app'), donut(s.byApp))),
+    h('div', { class: 'cols3 even' },
+      h('div', { class: 'card' }, h('h3', {}, 'New sign-ups', h('span', { class: 'pill gray' }, 'last 14 days')), barChart(s.signups)),
       h('div', { class: 'card' }, h('h3', {}, 'Spend by category'), hbars(s.byCategory, (r) => inr(r.paise))),
-      h('div', { class: 'card' }, h('h3', {}, 'Server'),
-        h('dl', { class: 'kv' }, h('dt', {}, 'Uptime'), h('dd', {}, dur(s.server.uptimeSec)), h('dt', {}, 'Database'), h('dd', {}, bytes(s.server.dbBytes)),
-          h('dt', {}, 'Memory'), h('dd', {}, s.server.memoryMb + ' MB'), h('dt', {}, 'Node'), h('dd', {}, s.server.node)))));
+      h('div', { class: 'card' }, h('h3', {}, 'Server health', pill(s.config.maintenanceMode ? 'Maintenance' : 'Healthy', s.config.maintenanceMode ? 'bad' : 'ok')),
+        h('dl', { class: 'kv', style: 'grid-template-columns:110px 1fr' }, h('dt', {}, 'Uptime'), h('dd', {}, dur(s.server.uptimeSec)), h('dt', {}, 'Database'), h('dd', {}, bytes(s.server.dbBytes)),
+          h('dt', {}, 'Memory'), h('dd', {}, s.server.memoryMb + ' MB'), h('dt', {}, 'Node'), h('dd', {}, s.server.node), h('dt', {}, 'Sign-ups'), h('dd', {}, s.config.registrationsOpen ? 'Open' : 'Paused'), h('dt', {}, 'Cloud sync'), h('dd', {}, s.config.syncEnabled ? 'On' : 'Off')))),
+    h('div', { class: 'cols3 even' },
+      h('div', { class: 'card' }, h('h3', {}, 'Newest users', h('button', { class: 'btn sm', onclick: () => go('users') }, 'View all')),
+        ur.users.length ? h('ul', { class: 'feed' }, ur.users.map((u) => h('li', {}, avatar(u.name), h('div', { class: 'meta' }, h('b', {}, u.name), h('small', {}, u.contact)), h('span', { class: 'muted' }, ago(u.created_at))))) : h('div', { class: 'empty' }, 'No users yet')),
+      h('div', { class: 'card' }, h('h3', {}, 'Recent admin activity', h('button', { class: 'btn sm', onclick: () => go('audit') }, 'Full log')),
+        au.entries.length ? h('ul', { class: 'feed' }, au.entries.map((e) => { const a = ACTION_TEXT[e.action] || [e.action, 'activity', 'blue']; return h('li', {}, h('span', { class: 'feedic c-' + a[2] }, icon(a[1])), h('div', { class: 'meta' }, h('b', {}, a[0]), h('small', {}, e.ip || '')), h('span', { class: 'muted' }, ago(e.at))); })) : h('div', { class: 'empty' }, 'Nothing logged yet'))));
 }
 
 // ───────── users ─────────
 async function viewUsers(main) {
-  const st = { search: '', status: '', offset: 0, limit: 25 };
+  const st = { search: pendingSearch, status: '', offset: 0, limit: 25 };
+  pendingSearch = '';
   const list = h('div', { class: 'card tablewrap' });
   const load = async () => {
     const r = await api('GET', '/users?' + qs(st));
     list.replaceChildren(r.users.length ? h('table', {},
       h('thead', {}, h('tr', {}, ['Name', 'Contact', 'Status', 'Joined', 'Last login', 'Last sync', 'Txns', 'Devices'].map((c, i) => h('th', { class: i > 5 ? 'num' : '' }, c)))),
       h('tbody', {}, r.users.map((u) => h('tr', { class: 'click', onclick: () => userDialog(u.id, load) },
-        h('td', {}, u.name), h('td', { class: 'mono' }, u.contact), h('td', {}, pill(u.status, u.status === 'active' ? 'ok' : 'bad')),
+        h('td', {}, h('div', { class: 'who' }, avatar(u.name), h('b', {}, u.name))), h('td', { class: 'mono' }, u.contact), h('td', {}, pill(u.status, u.status === 'active' ? 'ok' : 'bad')),
         h('td', {}, when(u.created_at)), h('td', {}, ago(u.last_login_at)), h('td', {}, u.last_sync ? ago(u.last_sync) : 'never'),
         h('td', { class: 'num' }, num(u.txn_count)), h('td', { class: 'num' }, num(u.sessions)))))) : h('div', { class: 'empty' }, 'No users match'),
       pager(st, r.total, load));
   };
   main.replaceChildren(
     h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'Users'), h('span', { class: 'grow' }),
-      h('input', { type: 'search', placeholder: 'Search name, contact or ID', style: 'min-width:240px', oninput: debounce((e) => { st.search = e.target.value; st.offset = 0; load(); }) }),
+      h('input', { type: 'search', placeholder: 'Search name, contact or ID', value: st.search, style: 'min-width:240px', oninput: debounce((e) => { st.search = e.target.value; st.offset = 0; load(); }) }),
       h('select', { onchange: (e) => { st.status = e.target.value; st.offset = 0; load(); }, 'aria-label': 'Status' },
         h('option', { value: '' }, 'All'), h('option', { value: 'active' }, 'Active'), h('option', { value: 'suspended' }, 'Suspended')),
       h('a', { class: 'btn', href: '/admin/api/users.csv', download: '' }, 'Export CSV')),
@@ -363,58 +562,118 @@ function phonePreview(d, dark) {
   const sf = dark ? d.dark : d.light;
   const brand = dark ? d.brand : (d.brandLight || d.brand);
   const lum = (hex) => { const n = parseInt(hex.slice(1), 16); const f = (c) => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); }; return .2126 * f(n >> 16 & 255) + .7152 * f(n >> 8 & 255) + .0722 * f(n & 255); };
-  const onBrand = lum(brand) > .4 ? '#0B0F14' : '#fff';
-  const k = .55; // preview scale for corner sizes
-  const card = (extra) => Object.assign({ background: sf.card, borderRadius: d.shape.card * k + 'px',
-    border: d.cardStyle === 'outlined' ? '1px solid ' + sf.border : (d.cardStyle === 'elevated' && dark ? '1px solid ' + sf.border : '0'),
-    boxShadow: d.cardStyle === 'elevated' && !dark ? '0 4px 12px rgba(0,0,0,.10)' : 'none' }, extra || {});
+  const on = (hex) => (lum(hex) > .4 ? '#0B0F14' : '#FFFFFF');
+  const k = .55;                                        // preview scale for corner sizes
+  const dens = d.density === 'compact' ? .72 : d.density === 'roomy' ? 1.25 : 1;
+  const gap = Math.round(6 * dens) + 'px';
   const st = (el, o) => { Object.assign(el.style, o); return el; };
-  const hero = st(h('div', {}, h('div', { style: 'font-size:8px;opacity:.75' }, 'You spent'), h('div', { style: 'font-size:21px;font-weight:800;margin:2px 0' }, '₹1,240.50'), h('div', { style: 'font-size:8px;opacity:.75' }, '↘ 18% less than yesterday')),
-    { background: 'linear-gradient(135deg,' + d.hero.colors.join(',') + ')', color: '#fff', borderRadius: (d.shape.card + 4) * k + 'px', padding: '12px', position: 'relative', overflow: 'hidden' });
-  d.hero.orbs.forEach((c, i) => hero.append(st(h('i', {}), { position: 'absolute', width: [54, 40, 22][i] + 'px', height: [54, 40, 22][i] + 'px', borderRadius: '50%', background: c, right: [-14, 'auto', 30][i] + 'px', left: [null, -10, null][i] != null ? '-10px' : 'auto', top: i === 0 ? '-14px' : 'auto', bottom: i ? '-10px' : 'auto' })));
-  const mini = (label, val, col) => st(h('div', {}, h('div', { style: `font-size:7px;color:${sf.textMuted};letter-spacing:.5px` }, label), h('div', { style: `font-size:12px;font-weight:800;color:${col};white-space:nowrap` }, val)), Object.assign(card(), { flex: '1', padding: '7px' }));
-  const bars = st(h('div', {}, [30, 52, 22, 64, 40, 70, 46].map((v, i) => st(h('i', {}), { flex: '1', height: v + '%', background: i === 5 ? brand : sf.cardAlt, borderRadius: Math.max(2, d.shape.control * .25) + 'px' }))),
-    { display: 'flex', alignItems: 'flex-end', gap: '4px', height: '38px' });
-  const body = st(h('div', { class: 'pad' },
-    h('div', { style: `font-size:8px;color:${sf.textMuted}` }, 'Good Afternoon'), h('div', { style: `font-size:13px;font-weight:800;margin-bottom:7px;color:${sf.text}` }, 'Chinmaya'),
-    hero, st(h('div', {}, mini('INCOME', '₹0', d.income), mini('NET', '−₹1,240', d.expense)), { display: 'flex', gap: '6px', margin: '7px 0' }),
-    st(h('div', {}, h('div', { style: `font-size:7px;color:${sf.textMuted};margin-bottom:4px` }, 'LAST 7 DAYS'), bars), Object.assign(card(), { padding: '8px' }))), {});
-  const dots = [0, 1, 2, 3, 4].map((i) => st(h('i', {}), { width: '12px', height: '12px', borderRadius: '4px', background: i === 0 ? brand : sf.textMuted, opacity: i === 0 ? 1 : .45, display: 'block' }));
+  const div = (style, ...kids) => st(h('div', {}, ...kids), style);
+  const brutal = d.cardStyle === 'brutal';
+  const cardCss = (extra) => Object.assign({ background: sf.card, borderRadius: d.shape.card * k + 'px',
+    border: brutal ? '2px solid ' + sf.text : d.cardStyle === 'outlined' ? '1px solid ' + sf.border : (d.cardStyle === 'elevated' && dark ? '1px solid ' + sf.border : '0'),
+    boxShadow: brutal ? '3px 3px 0 ' + sf.text : d.cardStyle === 'elevated' && !dark ? '0 4px 12px rgba(0,0,0,.10)' : 'none' }, extra || {});
+  const txt = (size, weight, color, extra) => Object.assign({ fontSize: size + 'px', fontWeight: weight, color, whiteSpace: 'nowrap' }, extra || {});
+  const label = (t, color) => div(txt(7, 600, color || sf.textMuted, { letterSpacing: '.5px' }), t);
+  const mini = (l, v, c, extra) => div(Object.assign(cardCss(), { flex: '1', padding: '6px 7px' }, extra || {}), label(l, extra && extra.color), div(txt(12, 800, c), v));
+  const bars = (h0) => div({ display: 'flex', alignItems: 'flex-end', gap: '4px', height: (h0 || 34) + 'px' },
+    ...[30, 52, 22, 64, 40, 70, 46].map((v, i) => div({ flex: '1', height: v + '%', background: i === 5 ? brand : sf.cardAlt, borderRadius: Math.max(1, d.shape.control * .25) + 'px' })));
+  const row = (i, n) => {
+    const inner = div({ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 0' },
+      div({ width: '16px', height: '16px', borderRadius: '50%', background: ['#F59F00', '#339AF0', '#CC5DE8'][i % 3], flex: 'none' }),
+      div({ flex: '1' }, div(txt(8, 700, sf.text), ['Swiggy', 'Uber', 'Airtel'][i % 3]), div(txt(6.5, 500, sf.textMuted), '12:31 PM')), div(txt(8, 700, sf.text), ['−₹450', '−₹120', '−₹30'][i % 3]));
+    if (d.rows === 'flat') return div({ borderBottom: i < n - 1 ? '1px solid ' + sf.border : '0' }, inner);
+    if (d.rows === 'cards') return div(Object.assign(cardCss(), { padding: '0 7px', marginBottom: '4px', borderRadius: (d.shape.control + 2) * k + 'px' }), inner);
+    return div({ background: sf.card, padding: '0 7px', borderRadius: i === 0 ? (d.shape.card - 4) * k + 'px ' + (d.shape.card - 4) * k + 'px 0 0' : i === n - 1 ? '0 0 ' + (d.shape.card - 4) * k + 'px ' + (d.shape.card - 4) * k + 'px' : '0' }, inner);
+  };
+  const rows = (n) => div({}, ...Array.from({ length: n }, (_, i) => row(i, n)));
+
+  // banner, drawn the way the design wants
+  const heroText = (fg, soft, big, withToday) => [div(txt(8, 600, soft), d.heroStyle === 'card' ? 'SPENT TODAY' : 'You spent'),
+    div(txt(big, 800, fg, { margin: '2px 0' }), '₹1,240.50' + (withToday ? '' : '')), div(txt(7.5, 500, soft), '↘ 18% less than yesterday')];
+  const hero = () => {
+    if (d.heroStyle === 'poster') return div({ padding: '2px 0 6px' }, ...heroText(sf.text, sf.textMuted, 27));
+    if (d.heroStyle === 'solid') { const bg = d.hero.colors[1], fg = on(bg); return div({ background: bg, color: fg, borderRadius: (d.shape.card + 4) * k + 'px', padding: '11px', border: brutal ? '2px solid ' + sf.text : '0', boxShadow: brutal ? '3px 3px 0 ' + sf.text : 'none' }, ...heroText(fg, fg === '#FFFFFF' ? 'rgba(255,255,255,.75)' : 'rgba(0,0,0,.6)', 20)); }
+    const g = div({ background: 'linear-gradient(135deg,' + d.hero.colors.join(',') + ')', color: '#fff', borderRadius: (d.shape.card + 4) * k + 'px', padding: '11px', position: 'relative', overflow: 'hidden', minHeight: d.heroStyle === 'card' ? '84px' : '0' });
+    d.hero.orbs.forEach((c, i) => g.append(st(h('i', {}), { position: 'absolute', width: [54, 40, 22][i] + 'px', height: [54, 40, 22][i] + 'px', borderRadius: '50%', background: c, right: i === 1 ? 'auto' : [-14, 0, 30][i] + 'px', left: i === 1 ? '-10px' : 'auto', top: i === 0 ? '-14px' : 'auto', bottom: i ? '-10px' : 'auto' })));
+    if (d.heroStyle === 'card') g.append(div({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', position: 'relative' }, div({ width: '17px', height: '12px', borderRadius: '3px', background: '#E8C766' }), div(txt(6.5, 800, 'rgba(255,255,255,.7)', { letterSpacing: '2px' }), 'PAISA')));
+    heroText('#fff', 'rgba(255,255,255,.75)', 20).forEach((n) => { n.style.position = 'relative'; g.append(n); });
+    return g;
+  };
+  const stat = (l, v, c) => div({ flex: '1' }, label(l), div(txt(10, 800, c), v));
+  let body;
+  if (d.home === 'bento') {
+    body = [hero(), div({ display: 'flex', gap: gap, margin: gap + ' 0' },
+      div(Object.assign(cardCss(), { flex: '1.25', padding: '8px', background: brand, borderColor: sf.text }), div(txt(6.5, 800, on(brand), { letterSpacing: '1px', opacity: .75 }), 'THIS MONTH'), div(txt(15, 800, on(brand), { marginTop: '14px' }), '₹3,707'), div(txt(8, 600, on(brand), { opacity: .75 }), '+₹1,300 in')),
+      div({ flex: '1', display: 'flex', flexDirection: 'column', gap: gap }, mini('INCOME', '₹0', d.income), mini('NET', '−₹1,240', d.expense))),
+      div(Object.assign(cardCss(), { padding: '7px', marginBottom: gap }), bars(26)), rows(1)];
+  } else if (d.home === 'minimal') {
+    body = [hero(), div({ display: 'flex', gap: '6px', padding: '5px 0', borderTop: '1px solid ' + sf.border, borderBottom: '1px solid ' + sf.border, margin: gap + ' 0' }, stat('INCOME', '₹0', d.income), stat('NET', '−₹1,240', d.expense), stat('MONTH', '₹3,707', sf.text)),
+      div({ marginBottom: gap }, bars(28)), rows(2)];
+  } else if (d.home === 'compact') {
+    body = [div(Object.assign(cardCss(), { padding: '8px' }), label('SPENT TODAY'), div(txt(19, 800, sf.text), '₹1,240.50'),
+      div({ display: 'flex', gap: '4px', marginTop: '6px' }, stat('INCOME', '₹0', d.income), stat('NET', '−1,240', d.expense), stat('MONTH', '3,707', sf.text))),
+      div(Object.assign(cardCss(), { padding: '6px', margin: gap + ' 0' }), bars(22)), rows(3)];
+  } else if (d.home === 'focus') {
+    const C = 2 * Math.PI * 36;
+    body = [div({ display: 'flex', justifyContent: 'center', margin: '2px 0 ' + gap },
+      (() => { const el = svg('svg', { viewBox: '0 0 90 90', width: 96, height: 96 }, svg('g', { transform: 'rotate(-90 45 45)' }, svg('circle', { cx: 45, cy: 45, r: 36, fill: 'none', stroke: sf.cardAlt, 'stroke-width': 8 }), svg('circle', { cx: 45, cy: 45, r: 36, fill: 'none', stroke: brand, 'stroke-width': 8, 'stroke-linecap': 'round', 'stroke-dasharray': (C * .68) + ' ' + C })),
+        svg('text', { x: 45, y: 42, 'text-anchor': 'middle', 'font-size': '6', fill: sf.textMuted }, 'You spent'), svg('text', { x: 45, y: 54, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '800', fill: sf.text }, '₹1,240')); return el; })()),
+      div(Object.assign(cardCss(), { display: 'flex', padding: '6px', textAlign: 'center' }), stat('INCOME', '₹0', d.income), stat('NET', '−1,240', d.expense), stat('MONTH', '3,707', sf.text)), div({ height: gap }), rows(1)];
+  } else { // classic
+    body = [hero(), div({ display: 'flex', gap: gap, margin: gap + ' 0' }, mini('INCOME', '₹0', d.income), mini('NET', '−₹1,240', d.expense)), div(Object.assign(cardCss(), { padding: '7px', marginBottom: gap }), label('LAST 7 DAYS'), div({ height: '4px' }), bars(26)), rows(1)];
+  }
+  const pad = Math.round(10 * dens);
+  const content = div({ padding: pad + 'px ' + Math.round(9 * dens) + 'px' }, div(txt(8, 500, sf.textMuted), 'Good Afternoon'), div(txt(13, 800, sf.text, { marginBottom: gap }), 'Chinmaya'), ...body);
+
+  // tab bar: floating, pill, docked, icons-only, underline
+  const dot = (i, big) => st(h('i', {}), { width: big ? '18px' : '12px', height: big ? '18px' : '12px', borderRadius: big ? '50%' : '4px', display: 'grid', placeItems: 'center', flex: 'none',
+    background: d.tabBar === 'icons' && i === 0 ? brand : (d.tabBar === 'icons' ? 'transparent' : i === 0 ? brand : sf.textMuted), opacity: i === 0 ? 1 : .45 });
+  const icons = d.tabBar === 'icons';
+  const dots = [0, 1, 2, 3, 4].map((i) => icons ? div({ width: '22px', height: '22px', borderRadius: '50%', display: 'grid', placeItems: 'center', background: i === 0 ? brand : 'transparent' }, div({ width: '9px', height: '9px', borderRadius: '3px', background: i === 0 ? on(brand) : sf.textMuted, opacity: i === 0 ? 1 : .5 }))
+    : d.tabBar === 'underline' ? div({ position: 'relative', width: '12px', height: '12px', borderRadius: '4px', background: i === 0 ? brand : sf.textMuted, opacity: i === 0 ? 1 : .45 }, i === 0 ? div({ position: 'absolute', top: '-9px', left: '-3px', width: '18px', height: '2px', borderRadius: '2px', background: brand }) : null)
+    : dot(i, false));
   const common = { position: 'absolute', display: 'flex', justifyContent: 'space-around', alignItems: 'center', background: sf.card, height: '34px' };
-  const bar = st(h('div', {}, dots), d.tabBar === 'docked'
-    ? Object.assign(common, { left: '0', right: '0', bottom: '0', borderTop: '1px solid ' + sf.border, borderRadius: Math.max(0, d.shape.tab * k) + 'px ' + Math.max(0, d.shape.tab * k) + 'px 0 0' })
-    : d.tabBar === 'pill'
-    ? Object.assign(common, { left: '16px', right: '16px', bottom: '10px', borderRadius: '99px', border: '1px solid ' + sf.border, boxShadow: '0 4px 10px rgba(0,0,0,.18)' })
-    : Object.assign(common, { left: '8px', right: '8px', bottom: '8px', borderRadius: d.shape.tab * k + 'px', border: dark ? '1px solid ' + sf.border : '0', boxShadow: '0 4px 12px rgba(0,0,0,.18)' }));
-  void onBrand;
-  return st(h('div', { class: 'phone' }, body, bar), { background: sf.bg });
+  const docked = d.tabBar === 'docked' || d.tabBar === 'underline';
+  const tabCss = docked ? Object.assign(common, { left: '0', right: '0', bottom: '0', borderTop: '1px solid ' + sf.border, borderRadius: Math.max(0, d.shape.tab * k) + 'px ' + Math.max(0, d.shape.tab * k) + 'px 0 0' })
+    : d.tabBar === 'pill' || icons ? Object.assign(common, { left: '16px', right: '16px', bottom: '10px', borderRadius: '99px', border: '1px solid ' + sf.border, boxShadow: '0 4px 10px rgba(0,0,0,.18)' })
+    : Object.assign(common, { left: '8px', right: '8px', bottom: '8px', borderRadius: d.shape.tab * k + 'px', border: dark ? '1px solid ' + sf.border : '0', boxShadow: '0 4px 12px rgba(0,0,0,.18)' });
+  return st(h('div', { class: 'phone' }, content, st(h('div', {}, dots), tabCss)), { background: sf.bg });
 }
 
 async function viewDesign(main) {
   const r = await api('GET', '/designs');
   let dark = true;
-  const grid = h('div', { class: 'dgrid' });
+  const grid = h('div', {});
   const motionSel = h('select', { 'aria-label': 'Animation style', onchange: async (e) => { await act(() => api('PUT', '/config', { uiMotion: e.target.value }), 'Animation style updated for all phones'); go('design'); } },
     h('option', { value: '' }, 'Design default'), r.motions.map((m) => h('option', { value: m.id, selected: r.motion === m.id }, m.label)));
-  const draw = () => grid.replaceChildren(...r.designs.map((d) => {
+  const structural = (d) => d.home !== 'classic' || d.heroStyle !== 'gradient' || d.rows !== 'grouped' || d.density !== 'cozy';
+  const card = (d) => {
     const on = d.id === r.active;
     return h('div', { class: 'dcard' + (on ? ' active' : '') },
       phonePreview(d, dark),
       h('h4', {}, d.name, on ? pill('Live', 'ok') : null),
       h('p', {}, d.tagline),
-      h('div', { class: 'tags' }, pill(d.motion, 'gray'), pill(d.tabBar + ' bar', 'gray'), pill(d.cardStyle + ' cards', 'gray')),
+      h('div', { class: 'tags' }, pill(d.home + ' home', 'brand'), pill(d.heroStyle + ' banner', 'gray'), pill(d.rows + ' rows', 'gray'), pill(d.tabBar + ' tabs', 'gray'), pill(d.motion, 'gray'), pill(d.density, 'gray')),
       h('button', { class: 'btn ' + (on ? '' : 'primary'), disabled: on, onclick: async () => {
         if (!(await confirmDlg('Switch the app to "' + d.name + '"?', 'Every phone running the app changes to this design within about 20 seconds. No update needed.', 'Apply to app'))) return;
         if (await act(() => api('PUT', '/config', { uiDesign: d.id }), d.name + ' is now live') !== undefined) go('design');
       } }, on ? 'Currently live' : 'Apply to app'));
-  }));
+  };
+  const draw = () => {
+    const nw = r.designs.filter(structural), cl = r.designs.filter((d) => !structural(d));
+    grid.replaceChildren(
+      h('h3', { class: 'sechead' }, 'New layouts', h('span', { class: 'pill brand' }, nw.length + ' designs'), h('small', {}, 'Different structure: home screen composition, banner, lists, tab bar and spacing')),
+      h('div', { class: 'dgrid' }, nw.map(card)),
+      h('h3', { class: 'sechead' }, 'Colour themes', h('span', { class: 'pill gray' }, cl.length + ' designs'), h('small', {}, 'Same classic layout, different colours, corners and motion')),
+      h('div', { class: 'dgrid' }, cl.map(card)));
+  };
   const seg = h('div', { class: 'seg' }, h('button', { class: 'on', onclick: (e) => { dark = true; sync(e.target); } }, 'Dark'), h('button', { onclick: (e) => { dark = false; sync(e.target); } }, 'Light'));
   const sync = (btn) => { seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === btn)); draw(); };
   draw();
   main.replaceChildren(
     h('div', { class: 'row' }, h('h2', { style: 'margin:0' }, 'App design'), h('span', { class: 'grow' }), h('span', { class: 'muted' }, 'Preview as'), seg,
       h('label', { class: 'muted' }, 'Animation ', motionSel)),
-    h('p', { class: 'muted', style: 'margin-top:0' }, 'Pick one of 10 designs. It changes colours, corner shapes, card and tab-bar style, the home banner and the animation feel, live on every phone, with no app update. Users can still choose Light, Dark or System in their own Profile.'),
+    h('p', { class: 'muted', style: 'margin-top:0' }, 'Pick a design. It changes colours, corner shapes, the home screen layout, banner, transaction lists, tab bar, spacing and animation feel, live on every phone, with no app update. Users can still choose Light, Dark or System in their own Profile.'),
     grid);
 }
 

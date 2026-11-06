@@ -24,8 +24,9 @@ export function timeLabel(iso: string) {
 }
 
 export function TransactionRow({ t, index = 0, showDate, onPress }: { t: Transaction; index?: number; showDate?: boolean; onPress?: (t: Transaction) => void }) {
-  const { colors } = useTheme();
+  const { colors, design } = useTheme();
   const reduce = useReducedMotion();
+  const cut = design.rows === 'flat' ? colors.bg : colors.card; // the little category badge is cut out of whatever the row sits on
   const cat = CATEGORIES.find((c) => c.id === t.categoryId) ?? CATEGORIES[CATEGORIES.length - 1]!;
   const excluded = t.kind === 'self_transfer' || t.kind === 'reversal' || t.status === 'failed';
   const credit = t.direction === 'credit';
@@ -41,7 +42,7 @@ export function TransactionRow({ t, index = 0, showDate, onPress }: { t: Transac
     >
       <View>
         <BankBadge bank={bank} />
-        <View style={{ position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: cut, alignItems: 'center', justifyContent: 'center' }}>
           <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: cat.color, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={cat.icon as never} size={10} color="#fff" /></View>
         </View>
       </View>
