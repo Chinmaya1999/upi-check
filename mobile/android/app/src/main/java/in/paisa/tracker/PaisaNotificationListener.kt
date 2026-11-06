@@ -16,24 +16,46 @@ class PaisaNotificationListener : NotificationListenerService() {
     val pkg = sbn.packageName
     val isMessaging = pkg in MESSAGING_PACKAGES
     if (pkg !in PACKAGES && !(isMessaging && resources.getBoolean(R.bool.allow_messaging_notifications))) return
-    // Group summaries repeat their children; counting both would double the payment.
-    if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0) return
+    val isTruecaller = pkg == "com.truecaller"
+    // Group summaries repeat their children; counting both would double the payment. Truecaller often posts only a summary
+    // that still carries the message lines, so it is the one app whose summaries are read (de-duplicated by text below).
+    if (sbn.notification.flags and android.app.Notification.FLAG_GROUP_SUMMARY != 0 && !isTruecaller) return
     val ex = sbn.notification.extras
-    val title = ex.getCharSequence("android.title")?.toString() ?: ""
+    val title = (ex.getCharSequence("android.title") ?: ex.getCharSequence("android.conversationTitle"))?.toString() ?: ""
     val text = (ex.getCharSequence("android.bigText") ?: ex.getCharSequence("android.text"))?.toString() ?: ""
-    if (title.isBlank() && text.isBlank()) return
-    // Update widgets / lock-screen card right away, even when the app is closed. The app recomputes exactly on next sync.
-    try { LiveTotals.parseNotification(sbn.packageName, title, text)?.let { LiveTotals.record(this, it, sbn.postTime) } } catch (_: Exception) { }
+    // (title, text) pairs to store. Chat-style notifications keep the real message in android.messages / android.textLines.
+    val items = ArrayList<Pair<String, String>>()
+    items.add(title to text)
+    if (isMessaging) {
+      try {
+        @Suppress("DEPRECATION")
+        ex.getParcelableArray("android.messages")?.forEach { m ->
+          val b = m as? android.os.Bundle ?: return@forEach
+          val body = b.getCharSequence("text")?.toString() ?: return@forEach
+          val sender = b.getCharSequence("sender")?.toString() ?: (b.getParcelable<android.os.Bundle>("sender_person")?.getCharSequence("name")?.toString())
+          items.add((sender?.takeIf { it.isNotBlank() } ?: title) to body)
+        }
+      } catch (_: Exception) { }
+      ex.getCharSequenceArray("android.textLines")?.forEach { l -> items.add(title to l.toString()) }
+    }
     val sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-    synchronized(LOCK) {
-      val arr = JSONArray(sp.getString(KEY, "[]"))
-      val id = "${sbn.key}|${sbn.postTime}"
-      for (i in 0 until arr.length()) if (arr.getJSONObject(i).getString("id") == id) return
-      arr.put(JSONObject().put("id", id).put("pkg", sbn.packageName).put("title", title).put("text", text).put("postedAt", sbn.postTime))
-      // keep the buffer bounded if the app is never opened
-      val trimmed = JSONArray()
-      for (i in maxOf(0, arr.length() - 500) until arr.length()) trimmed.put(arr.get(i))
-      sp.edit().putString(KEY, trimmed.toString()).apply()
+    for ((t, body) in items) {
+      if (t.isBlank() && body.isBlank()) continue
+      // Update widgets / lock-screen card right away, even when the app is closed. The app recomputes exactly on next sync.
+      try { LiveTotals.parseNotification(sbn.packageName, t, body)?.let { LiveTotals.record(this, it, sbn.postTime) } } catch (_: Exception) { }
+      synchronized(LOCK) {
+        val arr = JSONArray(sp.getString(KEY, "[]"))
+        // Same message seen again (notification updated / summary + child): one id per message text, not per post time.
+        val id = if (isMessaging) "${pkg}|${t}|${body.hashCode()}" else "${sbn.key}|${sbn.postTime}"
+        var dup = false
+        for (i in 0 until arr.length()) if (arr.getJSONObject(i).getString("id") == id) { dup = true; break }
+        if (dup) return@synchronized
+        arr.put(JSONObject().put("id", id).put("pkg", sbn.packageName).put("title", t).put("text", body).put("postedAt", sbn.postTime))
+        // keep the buffer bounded if the app is never opened
+        val trimmed = JSONArray()
+        for (i in maxOf(0, arr.length() - 500) until arr.length()) trimmed.put(arr.get(i))
+        sp.edit().putString(KEY, trimmed.toString()).apply()
+      }
     }
   }
 
