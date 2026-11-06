@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { attributeApps, buildDashboard, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
+import { attributeApps, buildDashboard, buildInsights, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
 import { ensureNotifyPermission, ensureReceiveSms, hasSmsPermission, lockScreenCardEnabled, postNotification, pushWidget, readInbox } from './inbox';
 import { dedupeNear } from './dedupe';
@@ -252,6 +252,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setNotifs(log.slice(0, 50));
     })().catch(() => {});
   }, [ready, txns, limits, prefs, now]);
+
+  // Alert once for each unusually large payment that just happened (never for old history, never twice).
+  useEffect(() => {
+    if (!ready || !prefs.alerts) return;
+    (async () => {
+      const fresh = buildInsights(txns, now).filter((i) => i.kind === 'unusual' && i.txnId && i.occurredAt && Date.now() - Date.parse(i.occurredAt) < 24 * 3600_000);
+      if (!fresh.length) return;
+      const seen: Record<string, 1> = JSON.parse((await db.getMeta('unusualSeen')) ?? '{}');
+      const todo = fresh.filter((i) => !seen[i.txnId!]);
+      if (!todo.length) return;
+      for (const i of todo) { seen[i.txnId!] = 1; postNotification(i.title, i.detail, 20000 + (Date.now() % 50000), prefs.sound, 'warn'); }
+      await db.setMeta('unusualSeen', JSON.stringify(Object.fromEntries(Object.keys(seen).slice(-200).map((k) => [k, 1]))));
+    })().catch(() => {});
+  }, [ready, txns, prefs, now]);
 
   // Keep the home-screen widget in step with the dashboard.
   useEffect(() => {

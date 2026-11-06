@@ -12,6 +12,7 @@ import { ExpenseBanner } from '../components/ExpenseBanner';
 import { AnimatedAmount } from '../components/AnimatedAmount';
 import { BudgetRing, DailyBars } from '../components/Charts';
 import { BudgetStrip } from '../components/BudgetStrip';
+import { Insights } from '../components/Insights';
 import { TransactionRow } from '../components/TransactionRow';
 import type { Profile } from '../data/session';
 
@@ -180,6 +181,7 @@ function HomeBody({ d, onSeeAll, enter }: { d: Dashboard; onSeeAll: () => void; 
       <>
         <ExpenseBanner d={d} />
         <A enter={enter} i={0}><BudgetStrip /></A>
+        <A enter={enter} i={0}><Insights /></A>
         <A enter={enter} i={1}>
           <View style={{ flexDirection: 'row', gap: space.md }}>
             <Card style={{ flex: 1.25, backgroundColor: colors.brand, justifyContent: 'space-between', minHeight: 150 }}>
@@ -234,6 +236,7 @@ function HomeBody({ d, onSeeAll, enter }: { d: Dashboard; onSeeAll: () => void; 
           </View>
         </A>
         <A enter={enter} i={1}><BudgetStrip /></A>
+        <A enter={enter} i={1}><Insights /></A>
         <A enter={enter} i={2}>
           <View>
             <Eyebrow>Last 7 days</Eyebrow>
@@ -268,6 +271,7 @@ function HomeBody({ d, onSeeAll, enter }: { d: Dashboard; onSeeAll: () => void; 
           </Card>
         </A>
         <A enter={enter} i={1}><BudgetStrip /></A>
+        <A enter={enter} i={1}><Insights /></A>
         <A enter={enter} i={2}>{chartCard}</A>
         <A enter={enter} i={3}>{recent}</A>
       </>
@@ -303,6 +307,7 @@ function HomeBody({ d, onSeeAll, enter }: { d: Dashboard; onSeeAll: () => void; 
             ))}
           </Card>
         </A>
+        <A enter={enter} i={2}><Insights /></A>
         <A enter={enter} i={2}>{chartCard}</A>
         <A enter={enter} i={3}>{recent}</A>
       </>
@@ -314,6 +319,7 @@ function HomeBody({ d, onSeeAll, enter }: { d: Dashboard; onSeeAll: () => void; 
     <>
       <ExpenseBanner d={d} />
       <A enter={enter} i={0}><BudgetStrip /></A>
+        <A enter={enter} i={0}><Insights /></A>
       <Animated.View entering={enter(0)} style={{ flexDirection: 'row', gap: space.md }}>{incomeCard}{netCard}</Animated.View>
       <A enter={enter} i={1}>{monthCard}</A>
       <A enter={enter} i={2}>{chartCard}</A>

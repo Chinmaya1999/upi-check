@@ -7,3 +7,4 @@ export * from './format';
 export * from './demo';
 export * from './sms';
 export * from './designs';
+export * from './insights';
