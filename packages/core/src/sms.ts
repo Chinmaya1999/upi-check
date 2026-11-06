@@ -4,10 +4,11 @@ import { dayKeyOf } from './normalize';
 export interface SmsMessage { id: string | number; address: string; body: string; date: number }
 export interface AppNotification { id: string; pkg: string; title: string; text: string; postedAt: number }
 
-const NOT_A_TXN = /\b(otp|one[- ]time|verification code|will be (?:debited|credited)|has been requested|request(?:ed)? (?:money|from)|collect request|declined|failed|unsuccessful|reversed|not (?:been )?(?:debited|credited)|if not (?:done|you)|minimum (?:amount )?due|total (?:amount )?due|payment due|bill (?:of|for)|statement|e-?mandate|autopay|reminder|offer|cashback offer|apply now|click|loan|emi due)\b/i;
+const NOT_A_TXN = /\b(otp|one[- ]time|verification code|will be (?:debited|credited)|has been requested|request(?:ed)? (?:money|from)|collect request|declined|failed|unsuccessful|reversed|not (?:been )?(?:debited|credited)|if not (?:done|you)|minimum (?:amount )?due|total (?:amount )?due|payment due|bill (?:of|for)|statement|e-?mandate|autopay|reminder|offer|cashback offer|apply now|click|loan|emi due|kyc|unlock|pre-?approved|approval|flat rs\.?\s?[\d,]+\s+cashback|check now|eligible|limit (?:of|up to|upto))\b/i;
 const DEBIT_WORDS = /\b(debited|debit|spent|sent|paid|withdrawn|purchase|purchased|deducted|transferred to|trf to)\b/i;
 const CREDIT_WORDS = /\b(credited|credit(?:ed)? to|received|deposited|refund(?:ed)?)\b/i;
-const AMOUNT = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/i;
+// (?!…) rejects shorthand like "Rs.5L" / "Rs.2K" / "Rs.1Cr", which are marketing figures, not real amounts.
+const AMOUNT = /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)(?![\d,]*\s?(?:l|k|cr|lakh|lac|crore)\b)/i;
 
 /** Sender IDs like "AX-HDFCBK", "VM-SBIUPI", "JD-ICICIT-S"; personal numbers are ignored. */
 export function looksLikeBankSender(address: string): boolean {

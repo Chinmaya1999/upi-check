@@ -7,6 +7,10 @@ const now = new Date('2026-11-04T12:00:00+05:30');
 const ingest = (raws: any[], existing: any[] = []) => ingestBatch(raws, { existing, consents: [{ id: 'c', accountId: '*', sources: ['notification'], status: 'active' }], now }).store;
 
 describe('bank SMS parsing', () => {
+  it('ignores promotional SMS that mention amounts (Rs.5L, Rs.1,000 cashback)', () => {
+    expect(sms('Complete KYC and unlock approval up to Rs.5L + flat Rs.1,000 cashback on your 1st EMI purchase with Bajaj Easy EMI. Check now https://a.bflcomm.in/BAJAJF/iLQzo', 'AX-BFLFIN-P')).toBeNull();
+    expect(sms('Get pre-approved limit up to Rs.2K on your first purchase', 'AX-BFLFIN-P')).toBeNull();
+  });
   it('parses a UPI debit', () => {
     const r = sms('Rs.450.00 debited from a/c XX1234 on 04-11-26 to VPA swiggy@icici (UPI Ref No 412345678901). Avl Bal Rs.12,000.50')!;
     expect(r).toMatchObject({ direction: 'debit', amount: '450.00', reference: '412345678901', accountId: 'HDFCBK:1234', balancePaise: 1200050 });
