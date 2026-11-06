@@ -113,8 +113,10 @@ export const PAYMENT_APP_NAMES: Record<PaymentApp, string> = {
 
 /** SMS apps. Only used (direct build) to catch bank messages that arrive as RCS / "verified SMS" and never reach the SMS inbox. */
 export const MESSAGING_PACKAGES = new Set([
-  'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.android.mms',
+  'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.android.mms', 'com.truecaller',
 ]);
+/** Truecaller (as SMS app / smart-SMS inbox) often shows the sender as a name ("HDFC Bank") instead of a sender ID. */
+const TRUECALLER = 'com.truecaller';
 
 // Payment-app wording varies a lot: "Paid ₹100 to X", "You've sent Rs 100 to X", "Payment of ₹100 to X successful",
 // "X sent you ₹100", "₹100 received from X", "Rs.100 debited from a/c XX1234".
@@ -169,8 +171,11 @@ const SENDER_ID = /^[A-Z]{2}-[A-Z0-9]{3,10}(?:-[A-Z])?$/;
  * engine de-duplicates by Txn ID. Chats with people and display names like "Airtel" are ignored.
  */
 export function parseMessagingNotification(n: AppNotification): RawTransaction | null {
-  if (!MESSAGING_PACKAGES.has(n.pkg) || !SENDER_ID.test(n.title.trim())) return null;
-  const r = parseBankSms({ id: `n${n.id}`, address: n.title.trim(), body: n.text, date: n.postedAt });
+  if (!MESSAGING_PACKAGES.has(n.pkg)) return null;
+  const title = n.title.trim();
+  // Truecaller: accept display names too; parseBankSms still needs an amount + debit/credit wording, so calls/spam alerts are ignored.
+  if (!SENDER_ID.test(title) && !(n.pkg === TRUECALLER && looksLikeBankSender(title))) return null;
+  const r = parseBankSms({ id: `n${n.id}`, address: title, body: n.text, date: n.postedAt });
   return r ? { ...r, sourceRecordId: `sms:n${n.id}` } : null;
 }
 

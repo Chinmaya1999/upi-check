@@ -57,6 +57,12 @@ describe('bank messages seen as SMS-app notifications (RCS / verified SMS)', () 
     expect(msg('AX-AIRBNK-S', body, 'com.whatsapp')).toBeNull();
     expect(msg('AX-BFLFIN-P', 'Complete KYC and unlock approval up to Rs.5L + flat Rs.1,000 cashback on your 1st EMI purchase')).toBeNull();
   });
+  it('reads transaction alerts shown by Truecaller, including display-name senders', () => {
+    expect(msg('AX-AIRBNK-S', body, 'com.truecaller')).toMatchObject({ direction: 'debit', amount: '33.00' });
+    expect(msg('Airtel Payments Bank', body, 'com.truecaller')).toMatchObject({ direction: 'debit', amount: '33.00' });
+    expect(msg('Missed call', 'Rahul called you', 'com.truecaller')).toBeNull();
+    expect(msg('Mom', 'Paid Rs. 500 to you', 'com.truecaller')).toMatchObject({ amount: '500' }); // person chats are not filtered by name, only by wording
+  });
   it('counts one payment once when the same message also reached the SMS inbox', () => {
     const fromInbox = parseBankSms({ id: 77, address: 'AX-AIRBNK-S', body, date: T })!;
     const fromNotif = parseMessagingNotification({ id: 'm9', pkg: GM, title: 'AX-AIRBNK-S', text: body, postedAt: T + 4000 })!;

@@ -52,6 +52,6 @@ class PaisaNotificationListener : NotificationListenerService() {
       "com.axis.mobile", "com.msf.kbank.mobile", "com.bankofbaroda.mconnect", "com.canarabank.mobility", "com.idfcfirstbank.optimus", "com.yesbank",
     )
     /** SMS apps (direct build only, see allow_messaging_notifications). */
-    val MESSAGING_PACKAGES = setOf("com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.mms")
+    val MESSAGING_PACKAGES = setOf("com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.mms", "com.truecaller")
   }
 }

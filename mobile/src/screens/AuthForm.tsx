@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -141,8 +141,8 @@ export function AuthForm({ initial, onDone, onBack }: { initial: 'login' | 'regi
   );
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24, paddingHorizontal: space.xl, gap: space.lg, flexGrow: 1 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior="padding">
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator persistentScrollbar contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 48, paddingHorizontal: space.xl, gap: space.lg, flexGrow: 1 }}>
         <Animated.View key={mode} entering={reduce ? undefined : FadeIn.duration(350)} style={{ gap: space.lg }}>
           {(mode === 'verify' || mode === 'forgot' || mode === 'reset') && (
             <Tap onPress={() => go(mode === 'verify' ? 'register' : 'login')} label="Back" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>

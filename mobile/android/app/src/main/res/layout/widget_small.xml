@@ -8,6 +8,7 @@
     android:orientation="vertical"
     android:paddingStart="14dp"
     android:paddingEnd="14dp">
+  <include layout="@layout/widget_festival"/>
   <TextView
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"

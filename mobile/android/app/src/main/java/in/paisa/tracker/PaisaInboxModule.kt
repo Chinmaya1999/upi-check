@@ -61,6 +61,12 @@ class PaisaInboxModule(private val ctx: ReactApplicationContext) : ReactContextB
     PaisaWidgetProvider.save(ctx, todayDebit.toLong(), todayCredit.toLong(), monthDebit.toLong(), weekDebit.toLong(), budgetPct, budgetLabel, dayKey)
   }
 
+  /** Festival on/off for the home-screen widgets. greeting = "" turns it off; particles is a comma-separated emoji list. */
+  @ReactMethod
+  fun setWidgetFestival(greeting: String, particles: String, accent: String) {
+    PaisaWidgetProvider.saveFestival(ctx, greeting, particles, accent)
+  }
+
   /** Lock-screen / notification-shade card with today's spend (kept in step by the app, the SMS receiver and the notification listener). */
   @ReactMethod
   fun setLockScreenCard(enabled: Boolean) { LiveNotification.setEnabled(ctx, enabled) }

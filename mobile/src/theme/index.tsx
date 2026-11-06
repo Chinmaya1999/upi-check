@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { AppState, useColorScheme } from 'react-native';
 import { LAYOUT_DEFAULT, MOTIONS, contrastOn, resolveDesign, type Festival, type MotionSpec, type ResolvedDesign } from '@upi/core';
 import * as db from '../data/db';
+import { pushWidgetFestival } from '../data/inbox';
 import { API_URL } from '../config';
 
 export interface Palette {
@@ -99,6 +100,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const sub = AppState.addEventListener('change', (s) => (s === 'active' ? start() : stop()));
     return () => { alive = false; stop(); sub.remove(); };
   }, []);
+
+  useEffect(() => { pushWidgetFestival(festival ? { greeting: festival.greeting, particles: festival.particles, accent: festival.accent } : null); }, [festival]);
 
   const value = useMemo(() => ({ colors: paletteFor(design, isDark), isDark, mode, setMode, design, motion: design.motionSpec ?? MOTIONS.smooth, festival }), [design, isDark, mode, festival]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

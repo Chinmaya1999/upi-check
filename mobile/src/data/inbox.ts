@@ -8,6 +8,7 @@ interface Native {
   openNotificationAccessSettings(): void;
   drainNotifications(): Promise<AppNotification[]>;
   updateWidget(todayDebit: number, todayCredit: number, monthDebit: number, weekDebit: number, budgetPct: number, budgetLabel: string, dayKey: string): void;
+  setWidgetFestival(greeting: string, particles: string, accent: string): void;
   notify(title: string, body: string, id: number, sound: boolean, level: string): void;
   setPaymentNotifications(enabled: boolean): void;
   isPaymentNotificationsEnabled(): Promise<boolean>;
@@ -71,6 +72,11 @@ export async function readInbox(sinceMs: number): Promise<InboxBatch> {
 /** Pushes the headline numbers to the Android home-screen widget (no-op elsewhere). */
 export function pushWidget(todayDebitPaise: number, todayCreditPaise: number, monthDebitPaise: number, weekDebitPaise: number, budgetPct: number | null, budgetLabel: string, dayKey: string) {
   native?.updateWidget(todayDebitPaise, todayCreditPaise, monthDebitPaise, weekDebitPaise, budgetPct ?? -1, budgetLabel, dayKey);
+}
+
+/** Tells the home-screen widgets which festival (if any) is live, so they show the animated festive strip. */
+export function pushWidgetFestival(f: { greeting: string; particles: string[]; accent: string } | null) {
+  try { native?.setWidgetFestival?.(f ? f.greeting : '', f ? f.particles.join(',') : '', f ? f.accent : ''); } catch { /* widgets are optional */ }
 }
 
 /** Android 13+ needs a runtime grant before any notification shows. */

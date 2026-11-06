@@ -40,6 +40,31 @@ class PaisaWidgetProvider : AppWidgetProvider() {
       refresh(context)
     }
 
+    /** Called from JS when a festival goes live / ends (null greeting = off). Widgets then show an animated emoji strip. */
+    fun saveFestival(context: Context, greeting: String?, particles: String, accent: String) {
+      val e = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+      if (greeting.isNullOrBlank()) e.remove("festGreeting") else e.putString("festGreeting", greeting).putString("festParticles", particles).putString("festAccent", accent)
+      e.apply()
+      refresh(context)
+    }
+
+    /** Shows (or hides) the festive strip and background on a widget layout. root = the widget's root view id. */
+    private fun applyFestival(context: Context, v: RemoteViews, rootId: Int, defaultBg: Int) {
+      val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+      val greeting = sp.getString("festGreeting", null)
+      if (greeting.isNullOrBlank()) {
+        v.setViewVisibility(R.id.w_fest, android.view.View.GONE)
+        v.setInt(rootId, "setBackgroundResource", defaultBg)
+        return
+      }
+      val emojis = (sp.getString("festParticles", "") ?: "").split(",").filter { it.isNotBlank() }.ifEmpty { listOf("🎉") }
+      listOf(R.id.w_fest_e1, R.id.w_fest_e2, R.id.w_fest_e3, R.id.w_fest_e4).forEachIndexed { i, id -> v.setTextViewText(id, emojis[i % emojis.size]) }
+      v.setTextViewText(R.id.w_fest_text, greeting)
+      try { v.setTextColor(R.id.w_fest_text, android.graphics.Color.parseColor(sp.getString("festAccent", "#FDE68A"))) } catch (_: Exception) { }
+      v.setViewVisibility(R.id.w_fest, android.view.View.VISIBLE)
+      v.setInt(rootId, "setBackgroundResource", R.drawable.widget_bg_festive)
+    }
+
     class Snapshot(val known: Boolean, val spent: Long, val credit: Long, val month: Long, val week: Long, val savedAt: Long)
 
     /** What the widgets and the lock-screen card show. If the day rolled over since the last update, "today" is genuinely 0. */
@@ -65,6 +90,8 @@ class PaisaWidgetProvider : AppWidgetProvider() {
       v.setTextViewText(R.id.s_spent, if (s.known) rupees(s.spent) else "₹0")
       v.setTextViewText(R.id.s_sub, if (s.known) "Received ${rupees(s.credit)}" else "Open Paisa to start")
       val open = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+      applyFestival(context, v, R.id.small_root, R.drawable.widget_bg)
+      if (context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("festGreeting", null) != null) v.setViewVisibility(R.id.s_sub, android.view.View.GONE) else v.setViewVisibility(R.id.s_sub, android.view.View.VISIBLE)
       v.setOnClickPendingIntent(R.id.small_root, PendingIntent.getActivity(context, 1, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
       return v
     }
@@ -93,6 +120,7 @@ class PaisaWidgetProvider : AppWidgetProvider() {
         else -> "Tap to open Paisa · set a budget"
       })
       val open = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+      applyFestival(context, v, R.id.widget_root, R.drawable.widget_bg)
       v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
       return v
     }

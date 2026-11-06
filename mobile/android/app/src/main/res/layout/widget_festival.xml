@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_fest"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:visibility="gone">
+  <ViewFlipper
+      android:id="@+id/w_fest_flip"
+      android:layout_width="26dp"
+      android:layout_height="26dp"
+      android:autoStart="true"
+      android:flipInterval="1300"
+      android:inAnimation="@anim/paisa_fest_in"
+      android:outAnimation="@anim/paisa_fest_out">
+    <TextView android:id="@+id/w_fest_e1" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:textSize="19sp"/>
+    <TextView android:id="@+id/w_fest_e2" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:textSize="19sp"/>
+    <TextView android:id="@+id/w_fest_e3" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:textSize="19sp"/>
+    <TextView android:id="@+id/w_fest_e4" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:textSize="19sp"/>
+  </ViewFlipper>
+  <TextView
+      android:id="@+id/w_fest_text"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="6dp"
+      android:layout_weight="1"
+      android:maxLines="1"
+      android:ellipsize="end"
+      android:textColor="#FDE68A"
+      android:textSize="13sp"
+      android:textStyle="bold"/>
+</LinearLayout>
