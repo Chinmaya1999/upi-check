@@ -53,7 +53,20 @@ class PaisaNotificationListener : NotificationListenerService() {
         for (rv in listOfNotNull(sbn.notification.bigContentView, sbn.notification.contentView, sbn.notification.headsUpContentView)) {
           try { collectText(rv.apply(applicationContext, android.widget.FrameLayout(this)), all) } catch (_: Throwable) { }
         }
-        if (all.isNotEmpty()) items.add(title to all.joinToString(" | "))
+        // Truecaller draws "+" (credit) / "-" (debit) as the amount's colour (green / red) and not as text: recover it.
+        var sign: String? = null
+        val colors = ArrayList<Int>()
+        (ex.getCharSequence("android.title") as? android.text.Spanned)?.let { sp ->
+          sp.getSpans(0, sp.length, android.text.style.ForegroundColorSpan::class.java).forEach { colors.add(it.foregroundColor) }
+        }
+        for (rv in listOfNotNull(sbn.notification.bigContentView, sbn.notification.contentView, sbn.notification.headsUpContentView)) {
+          try { collectAmountColors(rv.apply(applicationContext, android.widget.FrameLayout(this)), colors) } catch (_: Throwable) { }
+        }
+        // A Truecaller transaction card is always a credit or a debit: green amount = credit, any other colour = debit.
+        if (colors.isNotEmpty()) sign = if (colors.any { signOfColor(it) == "+" }) "+" else "-"
+        android.util.Log.i("PAISATC", "sign=$sign colors=${colors.joinToString { Integer.toHexString(it) }}")
+        val signedTitle = if (sign != null && !title.trimStart().startsWith("+") && !title.trimStart().startsWith("-") && !title.trimStart().startsWith("−")) "$sign $title" else title
+        if (all.isNotEmpty()) items.add(signedTitle to all.joinToString(" | "))
       } catch (_: Throwable) { }
     }
     val sp = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -75,6 +88,21 @@ class PaisaNotificationListener : NotificationListenerService() {
         sp.edit().putString(KEY, trimmed.toString()).apply()
       }
     }
+  }
+
+  private fun signOfColor(c: Int): String? {
+    val r = android.graphics.Color.red(c); val g = android.graphics.Color.green(c); val b = android.graphics.Color.blue(c)
+    return when {
+      g > r + 30 && g > b + 30 -> "+"
+      r > g + 30 && r > b + 30 -> "-"
+      else -> null
+    }
+  }
+
+  /** Text colours of amount-looking views (₹10, + ₹10) inside a custom notification layout. */
+  private fun collectAmountColors(v: android.view.View, out: MutableList<Int>) {
+    if (v is android.widget.TextView && Regex("^[+\\-−–\\s]*₹\\s*[\\d,.]+$").matches(v.text?.toString()?.trim() ?: "")) out.add(v.currentTextColor)
+    if (v is android.view.ViewGroup) for (i in 0 until v.childCount) collectAmountColors(v.getChildAt(i), out)
   }
 
   private fun collectText(v: android.view.View, out: MutableSet<String>) {

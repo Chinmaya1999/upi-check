@@ -102,5 +102,10 @@ describe('Truecaller transaction card', () => {
     expect(card('₹10 | UPI transfer from Chinmaya to your account')).toBeNull();            // no account digits
     expect(card('Canara Bank | - ₹250 | Paid to Zomato | Account xx3804')).toMatchObject({ direction: 'debit', amount: '250' });
     expect(card('Missed call from Rahul')).toBeNull();
+    // As the app receives it: the listener puts the sign (read from the amount's colour) on the title.
+    const real = (title: string) => parseTruecallerCard({ id: 'tc2', pkg: 'com.truecaller', title, text: 'Business chat from Canara Bank | •  Canara Bank  •  Chinmaya | Chinmaya | • Account xx3804 | ₹10', postedAt: T });
+    expect(real('+ ₹10')).toMatchObject({ direction: 'credit', amount: '10', accountId: 'CANARA BANK:3804' });
+    expect(real('- ₹10')).toMatchObject({ direction: 'debit', amount: '10' });
+    expect(real('₹10')).toBeNull();                                                              // no direction at all: never guess
   });
 });
