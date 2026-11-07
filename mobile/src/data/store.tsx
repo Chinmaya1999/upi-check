@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { attributeApps, buildDashboard, buildInsights, ingestBatch, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
+import { BUNDLE_NOTE, attributeApps, buildDashboard, buildInsights, ingestBatch, isGenuineTxnText, type Dashboard, type RawTransaction, type Transaction } from '@upi/core';
 import * as db from './db';
 import { ensureNotifyPermission, ensureReceiveSms, hasSmsPermission, lockScreenCardEnabled, postNotification, pushWidget, readInbox } from './inbox';
 import { dedupeNear } from './dedupe';
@@ -152,12 +152,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     syncing.current = true;
     try {
       const at = new Date();
-      const cursor = Number((await db.getMeta('smsCursor')) ?? 0);
+      // A skewed phone clock (common while offline) can stamp an SMS in the future; never let that push the cursor past real messages.
+      const cursor = Math.min(Number((await db.getMeta('smsCursor')) ?? 0), Date.now());
       const seenRaw = await db.getMeta('seenSms');
       const seenList: string[] = seenRaw ? JSON.parse(seenRaw) : [];
       const seen = new Set(seenList);
       // First run of this version: trust what is already stored (no overlap), then start remembering ids.
-      const since = full ? 0 : seenRaw === null ? cursor : Math.max(0, cursor - OVERLAP_MS);
+      // Every sync also re-scans all of today (and yesterday's tail), so a message that arrived while the app/internet was off is always picked up.
+      const todayStart = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime() - 3_600_000;
+      const base = full ? 0 : seenRaw === null ? cursor : Math.max(0, cursor - OVERLAP_MS);
+      const since = full ? 0 : Math.min(base, todayStart);
       const batch = await readInbox(since);
       const newSms = batch.sms.filter((r) => !r.sourceRecordId || !seen.has(r.sourceRecordId));
       const remember = async () => {
@@ -165,7 +169,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         await db.setMeta('seenSms', JSON.stringify([...seen].slice(-SEEN_MAX)));
       };
       if (auto && !newSms.length && !batch.notifications.length) {
-        if (batch.newestSmsAt > cursor) await db.setMeta('smsCursor', String(batch.newestSmsAt));
+        if (batch.newestSmsAt > cursor) await db.setMeta('smsCursor', String(Math.min(batch.newestSmsAt, Date.now())));
         if (seenRaw === null) await remember();
         return { added: 0, scannedSms: batch.scannedSms, message: 'Nothing new.' };
       }
@@ -188,7 +192,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (dd.remove.length) await db.deleteMany(dd.remove);
       remove.push(...dd.remove);
       await remember();
-      await db.setMeta('smsCursor', String(Math.max(cursor, batch.newestSmsAt)));
+      await db.setMeta('smsCursor', String(Math.min(Math.max(cursor, batch.newestSmsAt), Date.now())));
       await db.setMeta('lastSync', String(Date.now()));
       await refresh();
       pushToServer(remove);
@@ -216,6 +220,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Sample records from old builds (possibly restored from the server) never belong in real data.
         const sample = (await db.loadAll()).filter((t) => t.accountId.startsWith('demo-')).map((t) => t.id);
         if (sample.length) { await db.deleteMany(sample); await refresh(); pushToServer(sample); }
+        // One-time clean-up: earlier versions stored promos / receipts / "+7 more" notification bundles as transactions.
+        if ((await db.getMeta('cleanup3')) !== '1') {
+          const junk = (await db.loadAll()).filter((t) => {
+            if (t.sources.includes('manual') || t.sources.includes('csv') || t.sources.includes('pdf')) return false;
+            if (t.sources.every((x) => x === 'notification')) return BUNDLE_NOTE.test(t.narration);
+            return t.sources.every((x) => x === 'sms') && !t.narration.startsWith('UPI/') && !isGenuineTxnText(t.narration);
+          }).map((t) => t.id);
+          if (junk.length) { await db.deleteMany(junk); pushToServer(junk); await refresh(); }
+          await db.setMeta('cleanup3', '1');
+        }
         if (await hasSmsPermission()) { await ensureReceiveSms(); await syncDevice(); }
         if (await lockScreenCardEnabled()) await ensureNotifyPermission(); // the lock-screen card is a notification
       } catch { /* the Sync card shows errors on manual sync */ }

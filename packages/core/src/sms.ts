@@ -15,6 +15,21 @@ export function looksLikeBankSender(address: string): boolean {
   return !!address && !/^\+?[\d\s-]{8,}$/.test(address) && /[A-Za-z]{3,}/.test(address);
 }
 
+/** A genuine debit/credit alert always points at the user's own account, card or a UPI/bank rail. Merchant receipts
+ *  ("Txn ID", "Order #") and registration/policy receipts do not, so they are not counted. */
+const TXN_ANCHOR = /\b(?:a\/c|acct?|account|card|upi|vpa|imps|neft|rtgs|atm)\b|\bx{2,}\d{3,4}\b|\*{2,}\d{3,4}/i;
+/** Promotions, bonuses, receipts and phishing that merely contain "credited"/"debit" and an amount. */
+const FAKE_HINT = /\b(?:won|winner|lottery|prize|congratulations|claim|gift|click here|update your kyc|(?:will be )?(?:blocked|suspended)|bit\.ly|tinyurl|sale|discount|cashback|bonus|redeem|rewards?|points?|vouchers?|coupons?|promo|promo code|use code|coupon code|code:|use [A-Z0-9]{5,}|shop now|visit|t&c|worth|checkout|benefit|exclusive|warranty|exchange|birthday|off on|min(?:imum)?\s+(?:purchase|order|rs)|order\s*#|enjoy|receipt no)\b/i;
+const LINK = /https?:\/\/|\bwww\.|\b[a-z0-9-]+\.(?:io|ltd|co|com|in|me)\/|\bbit\.ly/i;
+const MASKED_ACCOUNT = /\b(?:a\/c|acct?|account|card)\W{0,6}(?:no\.?\W{0,3})?(?:x+|\*+|\.+)?\s?\d{3,4}\b/i;
+/** True for a completed debit/credit alert on the user's account. Everything else (promos, OTPs, receipts, chats) is false. */
+export function isGenuineTxnText(text: string): boolean {
+  const body = text.replace(/\s+/g, ' ').trim();
+  if (NOT_A_TXN.test(body) || FAKE_HINT.test(body) || !TXN_ANCHOR.test(body) || !AMOUNT.test(body)) return false;
+  // A link is fine only when the message names a masked account (real alerts); promos with links never do.
+  return !LINK.test(body) || MASKED_ACCOUNT.test(body);
+}
+
 const senderCode = (address: string) => address.replace(/^[A-Za-z]{2}-/, '').replace(/-[A-Z]$/i, '').toUpperCase();
 
 function detectDirection(text: string): TxnDirection | null {
@@ -32,7 +47,7 @@ function toIso(ms: number) { return new Date(ms).toISOString(); }
 export function parseBankSms(m: SmsMessage): RawTransaction | null {
   if (!looksLikeBankSender(m.address)) return null;
   const body = m.body.replace(/\s+/g, ' ').trim();
-  if (NOT_A_TXN.test(body)) return null;
+  if (!isGenuineTxnText(body)) return null;
 
   // Ignore the trailing "Avl Bal Rs.x" amount: cut before the balance clause when extracting the txn amount.
   const balIdx = body.search(/\b(?:avl|avail(?:able)?|total|clear)\.?\s*bal/i);
@@ -134,12 +149,16 @@ const RECEIVED = /\b(?:received|credited|refund(?:ed)?)\b/i;
 const DEBITED = /\bdebited\b/i;
 const NOT_PAYMENT_NOTE = /\b(pending|processing|scheduled|request(?:ed)?|reminder|will be|failed|declined|unsuccessful|couldn'?t|could not)\b/i;
 
+/** "Name + 7 more", "3 new messages": grouped summaries repeat or hide real payments, never one payment. */
+export const BUNDLE_NOTE = /\+\s*\d+\s*more\b|\b\d+\s+(?:new\s+)?(?:messages?|notifications?|transactions?)\b/i;
+const PROMO_NOTE = /\b(?:cashback|reward|scratch|offer|win|bonus|coupon|voucher|get up to|earn|discount|refer)\b/i;
+
 /** Parses a notification from a supported payment / bank app. The app is known from the package name. */
 export function parseAppNotification(n: AppNotification): RawTransaction | null {
   const app = APP_PACKAGES[n.pkg];
   if (!app) return null;
   const text = `${n.title} ${n.text}`.replace(/\s+/g, ' ').trim();
-  if (NOT_A_TXN.test(text) || NOT_PAYMENT_NOTE.test(text)) return null;
+  if (NOT_A_TXN.test(text) || NOT_PAYMENT_NOTE.test(text) || BUNDLE_NOTE.test(text) || PROMO_NOTE.test(text)) return null;
   const amt = text.match(AMOUNT);
   if (!amt) return null;
 

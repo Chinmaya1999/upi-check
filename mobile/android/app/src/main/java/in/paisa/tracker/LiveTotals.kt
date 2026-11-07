@@ -24,6 +24,11 @@ object LiveTotals {
   private val AMOUNT = Regex("""(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)""", RegexOption.IGNORE_CASE)
   private val BALANCE = Regex("""\b(?:avl|avail(?:able)?|total|clear)\.?\s*bal""", RegexOption.IGNORE_CASE)
   private val REF = Regex("""(?:upi\s*(?:ref(?:erence)?)?(?:\s*no\.?)?|ref(?:erence)?(?:\s*no\.?)?|rrn|utr|txn\s*id)\W{0,4}(\d{12})\b""", RegexOption.IGNORE_CASE)
+  private val TXN_ANCHOR = Regex("""\b(?:a/c|acct?|account|card|upi|vpa|imps|neft|rtgs|atm)\b|\bx{2,}\d{3,4}\b|\*{2,}\d{3,4}""", RegexOption.IGNORE_CASE)
+  private val FAKE_HINT = Regex("""\b(?:won|winner|lottery|prize|congratulations|claim|gift|click here|update your kyc|(?:will be )?(?:blocked|suspended)|bit\.ly|tinyurl|sale|discount|cashback|bonus|redeem|rewards?|points?|vouchers?|coupons?|promo|promo code|use code|coupon code|code:|use [A-Z0-9]{5,}|shop now|visit|t&c|worth|checkout|benefit|exclusive|warranty|exchange|birthday|off on|min(?:imum)?\s+(?:purchase|order|rs)|order\s*#|enjoy|receipt no)\b""", RegexOption.IGNORE_CASE)
+  private val LINK = Regex("""https?://|\bwww\.|\b[a-z0-9-]+\.(?:io|ltd|co|com|in|me)/|\bbit\.ly""", RegexOption.IGNORE_CASE)
+  private val MASKED_ACCOUNT = Regex("""\b(?:a/c|acct?|account|card)\W{0,6}(?:no\.?\W{0,3})?(?:x+|\*+|\.+)?\s?\d{3,4}\b""", RegexOption.IGNORE_CASE)
+  private val BUNDLE = Regex("""\+\s*\d+\s*more\b|\b\d+\s+(?:new\s+)?(?:messages?|notifications?|transactions?)\b""", RegexOption.IGNORE_CASE)
   private val PERSONAL_NUMBER = Regex("""^\+?[\d\s-]{8,}$""")
   private val LETTERS = Regex("""[A-Za-z]{3,}""")
   private const val WINDOW_MS = 20 * 60 * 1000L
@@ -44,7 +49,7 @@ object LiveTotals {
   fun parseSms(address: String, rawBody: String): Parsed? {
     if (address.isBlank() || PERSONAL_NUMBER.matches(address) || !LETTERS.containsMatchIn(address)) return null
     val body = rawBody.replace(Regex("\\s+"), " ").trim()
-    if (NOT_A_TXN.containsMatchIn(body)) return null
+    if (NOT_A_TXN.containsMatchIn(body) || FAKE_HINT.containsMatchIn(body) || !TXN_ANCHOR.containsMatchIn(body) || (LINK.containsMatchIn(body) && !MASKED_ACCOUNT.containsMatchIn(body))) return null
     val bal = BALANCE.find(body)?.range?.first ?: -1
     val main = if (bal > 0) body.substring(0, bal) else body
     val amt = AMOUNT.find(main) ?: return null
@@ -57,7 +62,7 @@ object LiveTotals {
   fun parseNotification(pkg: String, title: String, text: String): Parsed? {
     if (pkg !in APP_PACKAGES) return null
     val t = "$title $text".replace(Regex("\\s+"), " ").trim()
-    if (NOT_A_TXN.containsMatchIn(t) || Regex("""\b(pending|processing)\b""", RegexOption.IGNORE_CASE).containsMatchIn(t)) return null
+    if (BUNDLE.containsMatchIn(t) || NOT_A_TXN.containsMatchIn(t) || Regex("""\b(pending|processing)\b""", RegexOption.IGNORE_CASE).containsMatchIn(t)) return null
     val amt = AMOUNT.find(t) ?: return null
     val paid = Regex("""\b(?:paid|sent|payment of)\b.*?\bto\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)
     val recv = Regex("""\b(?:received|credited)\b.*?\bfrom\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)

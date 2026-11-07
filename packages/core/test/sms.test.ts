@@ -69,11 +69,36 @@ describe('app notifications + attribution', () => {
 describe('slice bank credit is its own account, not the same-amount Canara credit', () => {
   it('keeps both', () => {
     const T = Date.parse('2026-11-06T18:05:00Z');
-    const bank = parseBankSms({ id: 1, address: 'AD-CANBNK-S', body: 'Dear Customer, Acct XXXX3804 credited with INR 10.00 on 06/11/26 from CHINMAYA KUM; UPI:435853737587; Bal INR 54.42-CanaraBank', date: T })!;
+    const bank = parseBankSms({ id: 1, address: 'AD-CANBNK-S', body: 'Dear Customer, Acct XXXX1111 credited with INR 10.00 on 06/11/26 from A KUMAR; UPI:100000000002; Bal INR 54.42-CanaraBank', date: T })!;
     const app = parseAppNotification({ id: 'a', pkg: 'indwin.c3.shareapp', title: 'UPI payment received!', text: "You've got ₹10 from CHINMAYA KUMAR MALLI in your slice bank a/c xx9882. Avl. Bal. ₹101.23", postedAt: T + 60000 })!;
     expect(app).toMatchObject({ direction: 'credit', amount: '10' });
     const { store } = ingestBatch([bank, app], { existing: [], consents: [{ id: 'c', accountId: '*', sources: ['sms', 'notification'], status: 'active' }], now: new Date('2026-11-06T23:40:00+05:30') });
     const r = attributeApps(store);
     expect(r.remove).toHaveLength(0);
+  });
+});
+
+import { isGenuineTxnText, parseAppNotification as pan } from '../src/sms';
+describe('only real debit/credit alerts', () => {
+  it('rejects promos, bonuses, receipts and merchant confirmations', () => {
+    for (const b of [
+      'Bonus Credit! SHOPX has credited INR 600 to your account. Redeem on min Rs 2,799 Code: BOOST',
+      'Digital India Sale! Enjoy up to Rs.15000 Instant Discount* on SBI Debit & Credit Cards',
+      'An amount of INR 100.00 has been CREDITED as an additional checkout benefit. Use EXCLUSIVE100',
+      'Received Rs.14449/- against new registration fee vide receipt no KA5D260800008319 .',
+      'Payment Confirmed! Your Food Order #240152462027769 of Rs. 506.0 was successfully paid. Txn ID: 264259416000732.',
+      'Rs500 worth points credited in ur wallet Redeem by 21June',
+    ]) expect(isGenuineTxnText(b)).toBe(false);
+  });
+  it('keeps real bank alerts', () => {
+    for (const b of [
+      'Rs. 300.00 debited from Sample Payments Bank a/c Txn ID 100000000001 Bal:1000.00 Call 1800000000 for help',
+      'Dear Customer, Acct XXXX1111 credited with INR 10.00 on 06/11/26 from A KUMAR; UPI:100000000002',
+      'Credit Alert! Rs.100.00 credited to Sample Bank A/c XX2222 on 07-02-26 from VPA x@sample (UPI 100000000003)',
+      'Rs. 655 received in Sample A/c xx3333 on 03-Nov-26 from a shop via UPI (Ref ID: 100000000004). Avl. Bal. Rs. 666 Not you? https://sample.example/x',
+    ]) expect(isGenuineTxnText(b)).toBe(true);
+  });
+  it('ignores grouped "+ 7 more" payment-app notifications', () => {
+    expect(pan({ id: '1', pkg: 'com.phonepe.app', title: 'PhonePe', text: 'Paid Rs 100 to A Person + 7 more', postedAt: 1 })).toBeNull();
   });
 });

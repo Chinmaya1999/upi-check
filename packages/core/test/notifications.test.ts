@@ -61,7 +61,8 @@ describe('bank messages seen as SMS-app notifications (RCS / verified SMS)', () 
     expect(msg('AX-AIRBNK-S', body, 'com.truecaller')).toMatchObject({ direction: 'debit', amount: '33.00' });
     expect(msg('Airtel Payments Bank', body, 'com.truecaller')).toMatchObject({ direction: 'debit', amount: '33.00' });
     expect(msg('Missed call', 'Rahul called you', 'com.truecaller')).toBeNull();
-    expect(msg('Mom', 'Paid Rs. 500 to you', 'com.truecaller')).toMatchObject({ amount: '500' }); // person chats are not filtered by name, only by wording
+    expect(msg('AX-HDFCBK', 'Congratulations! You won Rs 5000 credited to your account, click here')).toBeNull();
+    expect(msg('Mom', 'Paid Rs. 500 to you', 'com.truecaller')).toBeNull(); // a chat with no account/UPI/ref detail is not a bank alert
   });
   it('counts one payment once when the same message also reached the SMS inbox', () => {
     const fromInbox = parseBankSms({ id: 77, address: 'AX-AIRBNK-S', body, date: T })!;
