@@ -151,7 +151,7 @@ const NOT_PAYMENT_NOTE = /\b(pending|processing|scheduled|request(?:ed)?|reminde
 
 /** "Name + 7 more", "3 new messages": grouped summaries repeat or hide real payments, never one payment. */
 export const BUNDLE_NOTE = /\+\s*\d+\s*more\b|\b\d+\s+(?:new\s+)?(?:messages?|notifications?|transactions?)\b/i;
-const PROMO_NOTE = /\b(?:cashback|reward|scratch|offer|win|bonus|coupon|voucher|get up to|earn|discount|refer)\b/i;
+const PROMO_NOTE = /\b(?:cashback|rewards?|scratch|offers?|win|bonus|coupons?|vouchers?|get up to|earn|discounts?|refer|unlock|deals?|sale|minimum purchase|purchase value|min(?:imum)? order|website|download|invite|claim|exclusive|hurry|limited time|expires?|valid (?:till|until)|use code)\b|%\s*off|\boff\*/i;
 
 /** Parses a notification from a supported payment / bank app. The app is known from the package name. */
 export function parseAppNotification(n: AppNotification): RawTransaction | null {

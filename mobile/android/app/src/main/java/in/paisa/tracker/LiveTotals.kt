@@ -19,6 +19,11 @@ object LiveTotals {
   class Parsed(val debit: Boolean, val paise: Long, val ref: String?)
 
   private val NOT_A_TXN = Regex("""\b(otp|one[- ]time|verification code|will be (?:debited|credited)|has been requested|request(?:ed)? (?:money|from)|collect request|declined|failed|unsuccessful|reversed|not (?:been )?(?:debited|credited)|if not (?:done|you)|minimum (?:amount )?due|total (?:amount )?due|payment due|bill (?:of|for)|statement|e-?mandate|autopay|reminder|offer|cashback offer|apply now|click|loan|emi due)\b""", RegexOption.IGNORE_CASE)
+  /** Offers / rewards / ads from payment apps: never a transaction, even when they mention an amount ("Get 50% off ... Rs. 299"). */
+  private val PROMO_NOTE = Regex("""\b(?:cashback|rewards?|scratch|offers?|win|bonus|coupons?|vouchers?|get up to|earn|discounts?|refer|unlock|deals?|sale|% ?off|off\*|minimum purchase|purchase value|min(?:imum)? order|website|app now|download|invite|claim|exclusive|hurry|limited time|expires?|valid (?:till|until|on)|use code|t&c)\b|%\s*off|\boff\*""", RegexOption.IGNORE_CASE)
+  /** App notifications must state a completed payment: only unambiguous verbs ("purchase" alone is an ad). */
+  private val APP_DEBIT = Regex("""\b(?:debited|paid|sent|payment of|spent|withdrawn|transferred to)\b""", RegexOption.IGNORE_CASE)
+  private val APP_CREDIT = Regex("""\b(?:credited|received|refund(?:ed)?|deposited)\b""", RegexOption.IGNORE_CASE)
   private val DEBIT = Regex("""\b(debited|debit|spent|sent|paid|withdrawn|purchase|purchased|deducted|transferred to|trf to)\b""", RegexOption.IGNORE_CASE)
   private val CREDIT = Regex("""\b(credited|credit(?:ed)? to|received|deposited|refund(?:ed)?)\b""", RegexOption.IGNORE_CASE)
   private val AMOUNT = Regex("""(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)""", RegexOption.IGNORE_CASE)
@@ -62,7 +67,7 @@ object LiveTotals {
   fun parseNotification(pkg: String, title: String, text: String): Parsed? {
     if (pkg !in APP_PACKAGES) return null
     val t = "$title $text".replace(Regex("\\s+"), " ").trim()
-    if (BUNDLE.containsMatchIn(t) || NOT_A_TXN.containsMatchIn(t) || Regex("""\b(pending|processing)\b""", RegexOption.IGNORE_CASE).containsMatchIn(t)) return null
+    if (BUNDLE.containsMatchIn(t) || NOT_A_TXN.containsMatchIn(t) || PROMO_NOTE.containsMatchIn(t) || Regex("""\b(pending|processing)\b""", RegexOption.IGNORE_CASE).containsMatchIn(t)) return null
     val amt = AMOUNT.find(t) ?: return null
     val paid = Regex("""\b(?:paid|sent|payment of)\b.*?\bto\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)
     val recv = Regex("""\b(?:received|credited)\b.*?\bfrom\s+.{2,40}""", RegexOption.IGNORE_CASE).containsMatchIn(t)
@@ -71,7 +76,16 @@ object LiveTotals {
       sentYou -> false
       paid && !Regex("received", RegexOption.IGNORE_CASE).containsMatchIn(t.take(12)) -> true
       recv -> false
-      else -> direction(t) ?: return null   // bank-app wording: "Rs 500 debited from a/c ..."
+      else -> {                              // bank-app wording: "Rs 500 debited from a/c ..."
+        val d = APP_DEBIT.find(t)?.range?.first ?: -1
+        val c = APP_CREDIT.find(t)?.range?.first ?: -1
+        when {
+          d < 0 && c < 0 -> return null
+          d < 0 -> false
+          c < 0 -> true
+          else -> d < c
+        }
+      }
     }
     return Parsed(debit, paise(amt), null)
   }
