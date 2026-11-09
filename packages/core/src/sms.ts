@@ -143,7 +143,7 @@ const TRUECALLER = 'com.truecaller';
 
 // Payment-app wording varies a lot: "Paid ₹100 to X", "You've sent Rs 100 to X", "Payment of ₹100 to X successful",
 // "X sent you ₹100", "₹100 received from X", "Rs.100 debited from a/c XX1234".
-const SENT_YOU = /\b(?:sent|paid|transferred)\s+you\b/i;
+const SENT_YOU = /\b(?:sent|paid|transferred)\s+(?:you\b|(?:(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d+)?\s+)?to\s+you\b)/i;
 const PAID = /\b(?:paid|sent|payment of|transferred)\b/i;
 const RECEIVED = /\b(?:received|credited|refund(?:ed)?)\b/i;
 const DEBITED = /\bdebited\b/i;
@@ -170,7 +170,7 @@ export function parseAppNotification(n: AppNotification): RawTransaction | null 
 
   if (SENT_YOU.test(text)) {                      // "Rahul sent you ₹500"
     direction = 'credit';
-    who = clean(n.text.replace(/\s+/g, ' ').trim().match(/^(.{2,40}?)\s+(?:has\s+)?(?:sent|paid|transferred)\s+you\b/i)?.[1]) ?? clean(fromName);
+    who = clean(n.text.replace(/\s+/g, ' ').trim().match(/^(.{2,40}?)\s+(?:has\s+)?(?:sent|paid|transferred)\s+you\b/i)?.[1]) ?? clean(fromName) ?? (/^(?:sent|paid|transferred)\b/i.test(n.text.trim()) ? clean(n.title) : undefined);
   } else if (RECEIVED.test(text) && !/\b(?:paid|sent)\s+(?:₹|rs|inr)/i.test(text.slice(0, 14))) {
     direction = 'credit'; who = clean(fromName);
   } else if (PAID.test(text) || DEBITED.test(text)) {
